@@ -1,0 +1,24 @@
+{
+  "tested_at": "2026-10-07T17:32:52.989715+00:00",
+  "concurrency": 20,
+  "normal": {
+    "requests": 60,
+    "errors": 0,
+    "p50_ms": 1300.1,
+    "p95_ms": 1508.2,
+    "max_ms": 1602.0
+  },
+  "report": {
+    "requests": 60,
+    "errors": 0,
+    "p50_ms": 2849.8,
+    "p95_ms": 4063.8,
+    "max_ms": 4149.8
+  },
+  "scale": {
+    "cars": 4000,
+    "report_ms": 6097.5,
+    "revenue": "434653000.00"
+  },
+  "targets_met": false
+}

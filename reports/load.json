@@ -1,0 +1,39 @@
+{
+  "tested_at": "2026-10-07T17:55:40.444505+00:00",
+  "concurrency": 20,
+  "normal_endpoint": "vehicle detail with ledger",
+  "normal": {
+    "requests": 60,
+    "errors": 0,
+    "p50_ms": 288.2,
+    "p95_ms": 419.7,
+    "max_ms": 508.8
+  },
+  "initial_bootstrap": {
+    "requests": 20,
+    "errors": 0,
+    "p50_ms": 560.7,
+    "p95_ms": 830.9,
+    "max_ms": 834.4
+  },
+  "report": {
+    "requests": 60,
+    "errors": 0,
+    "p50_ms": 777.2,
+    "p95_ms": 1143.3,
+    "max_ms": 1205.3
+  },
+  "scale": {
+    "cars": 4000,
+    "report_ms": 1859.3,
+    "samples_ms": [
+      1859.3,
+      1661.7,
+      1636.5
+    ],
+    "prepared": "ANALYZE after fixture import",
+    "tested_at": "2026-10-07T18:00:10.056748+00:00",
+    "revenue": "434653000.00"
+  },
+  "targets_met": true
+}

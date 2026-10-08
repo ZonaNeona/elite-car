@@ -1,0 +1,73 @@
+{
+  "checked_at": "2026-10-07T18:26:18.471168+00:00",
+  "processes": [
+    {
+      "name": "demo-elite-car-api",
+      "status": "online",
+      "memory_mb": 130.3,
+      "restarts": 8
+    },
+    {
+      "name": "demo-elite-car-worker",
+      "status": "online",
+      "memory_mb": 205.1,
+      "restarts": 7
+    }
+  ],
+  "combined_memory_mb": 335.4,
+  "disk_free_gb": 15.8,
+  "health": {
+    "status": "ok",
+    "database": "ok",
+    "worker_age_seconds": 20.074649,
+    "pending": 0,
+    "telegram": false,
+    "ai": true
+  },
+  "neighbors": [
+    {
+      "host": "agent.shvarev-demo.ru",
+      "status": 200
+    },
+    {
+      "host": "canapeclub.shvarev-demo.ru",
+      "status": 200
+    },
+    {
+      "host": "commerce.shvarev-demo.ru",
+      "status": 301
+    },
+    {
+      "host": "elite-car.shvarev-demo.ru",
+      "status": 200
+    },
+    {
+      "host": "iruler.shvarev-demo.ru",
+      "status": 200
+    },
+    {
+      "host": "izotova.shvarev-demo.ru",
+      "status": 200
+    },
+    {
+      "host": "lookin.shvarev-demo.ru",
+      "status": 200
+    },
+    {
+      "host": "mustang.shvarev-demo.ru",
+      "status": 200
+    },
+    {
+      "host": "product-hunter.shvarev-demo.ru",
+      "status": 200
+    },
+    {
+      "host": "proryv.shvarev-demo.ru",
+      "status": 200
+    },
+    {
+      "host": "www.shvarev-demo.ru",
+      "status": 404
+    }
+  ]
+}
