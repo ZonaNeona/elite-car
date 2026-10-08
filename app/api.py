@@ -3,7 +3,11 @@ from datetime import timedelta, datetime
 from pathlib import Path
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request, Response, HTTPException, UploadFile, File
-from fastapi.responses import StreamingResponse, FileResponse, ORJSONResponse as JSONResponse
+from fastapi.responses import (
+    StreamingResponse,
+    FileResponse,
+    ORJSONResponse as JSONResponse,
+)
 from pydantic import BaseModel, Field, ConfigDict
 from sqlalchemy import select, func, text, delete, or_
 from sqlalchemy.exc import IntegrityError
@@ -69,15 +73,25 @@ class AIInput(BaseModel):
 
 @app.middleware("http")
 async def headers(request, call_next):
-    if request.method not in ("GET", "HEAD", "OPTIONS") and request.url.path != "/api/v1/telegram/webhook":
+    if (
+        request.method not in ("GET", "HEAD", "OPTIONS")
+        and request.url.path != "/api/v1/telegram/webhook"
+    ):
         origin = request.headers.get("origin")
-        if origin and origin not in (URL, "http://127.0.0.1:3008", "http://localhost:5173"):
+        if origin and origin not in (
+            URL,
+            "http://127.0.0.1:3008",
+            "http://localhost:5173",
+        ):
             return JSONResponse({"detail": "Недопустимый источник запроса"}, 403)
     try:
         r = await call_next(request)
     except IntegrityError:
         return JSONResponse(
-            {"detail": "Конфликт: объект уже существует или автомобиль занят в выбранный период."}, 409
+            {
+                "detail": "Конфликт: объект уже существует или автомобиль занят в выбранный период."
+            },
+            409,
         )
     r.headers["X-Content-Type-Options"] = "nosniff"
     r.headers["Referrer-Policy"] = "same-origin"
@@ -95,7 +109,8 @@ def auth(s, request):
             Space.token == digest,
             Space.id.in_(
                 select(AccessToken.space).where(
-                    AccessToken.token == digest, AccessToken.created > now() - timedelta(hours=24)
+                    AccessToken.token == digest,
+                    AccessToken.created > now() - timedelta(hours=24),
                 )
             ),
         )
@@ -137,16 +152,28 @@ def health():
     with db() as s:
         s.execute(text("SELECT 1"))
         worker = s.get(System, "worker")
-        age = (now() - datetime.fromisoformat(worker.data["heartbeat"])).total_seconds() if worker else None
-        pending = s.scalar(select(func.count()).select_from(Job).where(Job.state == "pending"))
+        age = (
+            (now() - datetime.fromisoformat(worker.data["heartbeat"])).total_seconds()
+            if worker
+            else None
+        )
+        pending = s.scalar(
+            select(func.count()).select_from(Job).where(Job.state == "pending")
+        )
         return {
             "status": "ok" if age is not None and age < 90 else "degraded",
             "database": "ok",
             "worker_age_seconds": age,
             "pending": pending,
             "telegram": bool(os.getenv("TELEGRAM_BOT_TOKEN")),
-            "telegram_username": os.getenv("TELEGRAM_USERNAME") if os.getenv("TELEGRAM_BOT_TOKEN") else None,
-            "ai": bool(os.getenv("DEEPSEEK_API_KEY") or os.getenv("OPENROUTER_API_KEY")),
+            "telegram_username": (
+                os.getenv("TELEGRAM_USERNAME")
+                if os.getenv("TELEGRAM_BOT_TOKEN")
+                else None
+            ),
+            "ai": bool(
+                os.getenv("DEEPSEEK_API_KEY") or os.getenv("OPENROUTER_API_KEY")
+            ),
         }
 
 
@@ -157,7 +184,9 @@ def session(request: Request, response: Response):
         s.execute(text("SELECT pg_advisory_xact_lock(684411)"))
         if (
             s.scalar(
-                select(func.count()).select_from(Space).where(Space.created > now() - timedelta(minutes=1))
+                select(func.count())
+                .select_from(Space)
+                .where(Space.created > now() - timedelta(minutes=1))
             )
             >= 8
         ):
@@ -219,10 +248,17 @@ def bootstrap(request: Request):
             "document",
         ]
         items = s.scalars(
-            select(Item).where(Item.space == sp.id, Item.kind.in_(kinds)).order_by(Item.code)
+            select(Item)
+            .where(Item.space == sp.id, Item.kind.in_(kinds))
+            .order_by(Item.code)
         ).all()
         owned = (
-            {x.id for x in items if x.kind == "vehicle" and x.data.get("investor") == sp.data.get("investor")}
+            {
+                x.id
+                for x in items
+                if x.kind == "vehicle"
+                and x.data.get("investor") == sp.data.get("investor")
+            }
             if sp.role == "investor"
             else {
                 x.data["vehicle"]
@@ -238,7 +274,9 @@ def bootstrap(request: Request):
                 return x.kind in READ[sp.role]
             if x.kind == "vehicle":
                 return (
-                    x.id in owned or sp.role == "client" and x.data["direction"] in ("rental", "commercial")
+                    x.id in owned
+                    or sp.role == "client"
+                    and x.data["direction"] in ("rental", "commercial")
                 )
             if x.kind == "contract":
                 return (
@@ -255,7 +293,9 @@ def bootstrap(request: Request):
                     x.id if x.kind == "investor" else x.data.get("investor")
                 ) == sp.data.get("investor")
             if x.kind == "referral":
-                return sp.role == "driver" and x.data.get("client") == sp.data.get("driver")
+                return sp.role == "driver" and x.data.get("client") == sp.data.get(
+                    "driver"
+                )
             if x.kind == "knowledge":
                 return sp.role in x.data.get("roles", [])
             return x.kind == "tariff"
@@ -270,14 +310,21 @@ def bootstrap(request: Request):
             for k in ("statement", "import", "investor"):
                 result[k] = []
         bookings = s.scalars(
-            select(Booking).where(Booking.space == sp.id, Booking.state.in_(["active", "confirmed", "hold"]))
+            select(Booking).where(
+                Booking.space == sp.id,
+                Booking.state.in_(["active", "confirmed", "hold"]),
+            )
         ).all()
         ids = {x["id"] for x in result["vehicle"]}
         result["bookings"] = [
             {
                 "id": b.id,
                 "vehicle": b.vehicle,
-                "contract": b.contract if sp.role in ("owner", "admin", "manager", "finance") else None,
+                "contract": (
+                    b.contract
+                    if sp.role in ("owner", "admin", "manager", "finance")
+                    else None
+                ),
                 "start": b.period.lower.isoformat(),
                 "end": b.period.upper.isoformat(),
                 "state": b.state,
@@ -292,7 +339,9 @@ def bootstrap(request: Request):
             sources=SOURCES,
             today=str(today()),
             telegram_username=os.getenv("TELEGRAM_USERNAME"),
-            ai_configured=bool(os.getenv("DEEPSEEK_API_KEY") or os.getenv("OPENROUTER_API_KEY")),
+            ai_configured=bool(
+                os.getenv("DEEPSEEK_API_KEY") or os.getenv("OPENROUTER_API_KEY")
+            ),
         )
         return JSONResponse(result)
 
@@ -350,7 +399,11 @@ def availability(request: Request, start: str, end: str, direction: str | None =
                     "reason": (
                         "Автомобиль занят"
                         if v.id in occupied
-                        else "Нужна подготовка" if v.data["status"] != "ready" else "Доступен"
+                        else (
+                            "Нужна подготовка"
+                            if v.data["status"] != "ready"
+                            else "Доступен"
+                        )
                     ),
                     "rate": v.data["rate"],
                 }
@@ -381,7 +434,9 @@ def ledger(
         if contract:
             q = q.where(Entry.contract == contract)
         total = s.scalar(select(func.count()).select_from(q.subquery()))
-        rows = s.scalars(q.order_by(Entry.date.desc(), Entry.id).offset(max(0, offset)).limit(200)).all()
+        rows = s.scalars(
+            q.order_by(Entry.date.desc(), Entry.id).offset(max(0, offset)).limit(200)
+        ).all()
         return JSONResponse({"total": total, "rows": [ledger_row(e) for e in rows]})
 
 
@@ -395,11 +450,21 @@ def detail(id: str, request: Request):
         r = serialize(x)
         if x.kind == "contract":
             r["calendar"] = calendar(x)
-            r["ledger"] = [ledger_row(e) for e in entries(s, sp, contract=id, limit=300)]
+            r["ledger"] = [
+                ledger_row(e) for e in entries(s, sp, contract=id, limit=300)
+            ]
             r["allocation"] = payment_allocation(s, sp, id)
         if x.kind == "vehicle":
-            r["contracts"] = [serialize(c) for c in visible(s, sp, "contract") if c.data["vehicle"] == id]
-            r["tickets"] = [serialize(t) for t in visible(s, sp, "ticket") if t.data["vehicle"] == id]
+            r["contracts"] = [
+                serialize(c)
+                for c in visible(s, sp, "contract")
+                if c.data["vehicle"] == id
+            ]
+            r["tickets"] = [
+                serialize(t)
+                for t in visible(s, sp, "ticket")
+                if t.data["vehicle"] == id
+            ]
             r["ledger"] = [ledger_row(e) for e in entries(s, sp, vehicle=id, limit=300)]
         r["events"] = [
             {"id": e.id, "title": e.title, "role": e.role, "at": e.created.isoformat()}
@@ -417,7 +482,11 @@ def detail(id: str, request: Request):
 def cmd(body: Cmd, request: Request):
     with db() as s:
         return command(
-            s, auth(s, request), body.action, body.payload, request.headers.get("idempotency-key", "")
+            s,
+            auth(s, request),
+            body.action,
+            body.payload,
+            request.headers.get("idempotency-key", ""),
         )
 
 
@@ -447,27 +516,39 @@ async def events(request: Request):
                 if not current or current.role != role:
                     break
                 rows = s.scalars(
-                    select(Event).where(Event.space == sid, Event.id > last).order_by(Event.id).limit(100)
+                    select(Event)
+                    .where(Event.space == sid, Event.id > last)
+                    .order_by(Event.id)
+                    .limit(100)
                 ).all()
                 permitted = set()
                 for e in rows:
                     if role in ("owner", "admin", "finance"):
                         permitted.add(e.id)
                     elif e.target:
-                        target = s.scalar(select(Item).where(Item.space == sid, Item.id == e.target))
+                        target = s.scalar(
+                            select(Item).where(Item.space == sid, Item.id == e.target)
+                        )
                         if target and cansee(s, current, target):
                             permitted.add(e.id)
             for e in rows:
                 last = e.id
                 if e.id in permitted:
                     yield f"id: {e.id}\ndata: " + json.dumps(
-                        {"title": e.title, "target": e.target, "role": e.role, "at": e.created.isoformat()},
+                        {
+                            "title": e.title,
+                            "target": e.target,
+                            "role": e.role,
+                            "at": e.created.isoformat(),
+                        },
                         ensure_ascii=False,
                     ) + "\n\n"
             yield ": keepalive\n\n"
             await asyncio.sleep(2)
 
-    return StreamingResponse(stream(), media_type="text/event-stream", headers={"X-Accel-Buffering": "no"})
+    return StreamingResponse(
+        stream(), media_type="text/event-stream", headers={"X-Accel-Buffering": "no"}
+    )
 
 
 @app.post("/api/v1/files")
@@ -502,7 +583,9 @@ async def upload(request: Request, file: UploadFile = File(...)):
     with db() as s:
         sp = auth(s, request)
         total = s.scalar(
-            select(func.count()).select_from(Item).where(Item.space == sp.id, Item.kind == "file")
+            select(func.count())
+            .select_from(Item)
+            .where(Item.space == sp.id, Item.kind == "file")
         )
         if total >= 30:
             fail("Лимит 30 файлов на сессию", 429)
@@ -534,7 +617,9 @@ def download(id: str, request: Request):
         path = FILES / sp.id / (x.id + x.data["ext"])
         if not path.exists():
             fail("Файл недоступен", 404)
-        return FileResponse(path, filename=x.data["name"], headers={"Content-Disposition": "attachment"})
+        return FileResponse(
+            path, filename=x.data["name"], headers={"Content-Disposition": "attachment"}
+        )
 
 
 @app.post("/api/v1/import/preview")
@@ -579,7 +664,9 @@ def import_preview(body: dict, request: Request):
                     raise ValueError("Сумма должна быть положительной")
                 if not s.scalar(
                     select(Item.id).where(
-                        Item.space == sp.id, Item.kind == "contract", Item.code == r["contract"]
+                        Item.space == sp.id,
+                        Item.kind == "contract",
+                        Item.code == r["contract"],
                     )
                 ):
                     raise ValueError("Договор не найден")
@@ -591,7 +678,13 @@ def import_preview(body: dict, request: Request):
             sp.id,
             "import",
             "IMP-" + uid()[:6],
-            {"status": "preview", "rows": out, "name": x.data["name"], "posted": 0, "unmatched": []},
+            {
+                "status": "preview",
+                "rows": out,
+                "name": x.data["name"],
+                "posted": 0,
+                "unmatched": [],
+            },
         )
         return serialize(item)
 
@@ -645,7 +738,14 @@ def document(id: str, request: Request, format: str = "pdf"):
 def ai(body: AIInput, request: Request):
     with db() as s:
         sp = auth(s, request)
-        if body.mode not in ("knowledge", "ticket", "finance", "document"):
+        if body.mode not in (
+            "knowledge",
+            "ticket",
+            "finance",
+            "document",
+            "agent",
+            "rag",
+        ):
             fail("Неизвестная функция")
         if body.mode == "finance" and sp.role not in (
             "owner",
@@ -668,12 +768,22 @@ def ai(body: AIInput, request: Request):
             s.scalar(
                 select(func.count())
                 .select_from(Job)
-                .where(Job.space == sp.id, Job.kind == "ai", Job.due > now() - timedelta(hours=1))
+                .where(
+                    Job.space == sp.id,
+                    Job.kind == "ai",
+                    Job.due > now() - timedelta(hours=1),
+                )
             )
             >= 10
         ):
             fail("Лимит 10 AI-запросов в час", 429)
-        j = Job(id=uid(), space=sp.id, kind="ai", data={**body.model_dump(), "role": sp.role}, result={})
+        j = Job(
+            id=uid(),
+            space=sp.id,
+            kind="ai",
+            data={**body.model_dump(), "role": sp.role},
+            result={},
+        )
         s.add(j)
         return {"id": j.id, "state": "pending"}
 
@@ -710,7 +820,9 @@ def settings(request: Request):
             "budget": "0.50",
             "quality": quality.data if quality else None,
             "telegram": bool(os.getenv("TELEGRAM_BOT_TOKEN")),
-            "ai": bool(os.getenv("DEEPSEEK_API_KEY") or os.getenv("OPENROUTER_API_KEY")),
+            "ai": bool(
+                os.getenv("DEEPSEEK_API_KEY") or os.getenv("OPENROUTER_API_KEY")
+            ),
             "closed_months": sp.data.get("closed_months", []),
         }
 
@@ -754,13 +866,25 @@ def telegram_auth(body: dict, response: Response):
 
     data = validate(body.get("initData", ""))
     with db() as s:
-        sp = s.scalar(select(Space).where(Space.data["tg_user"].astext == str(data["id"])))
+        sp = s.scalar(
+            select(Space).where(Space.data["tg_user"].astext == str(data["id"]))
+        )
         if not sp:
             sp = create_space(s)
             sp.role = "driver"
             sp.data = {**sp.data, "tg_user": str(data["id"])}
         token = secrets.token_urlsafe(32)
-        s.add(AccessToken(token=hashlib.sha256(token.encode()).hexdigest(), space=sp.id))
+        s.add(
+            AccessToken(token=hashlib.sha256(token.encode()).hexdigest(), space=sp.id)
+        )
         sp.touched = now()
         set_cookie(response, token)
         return space_data(sp)
+
+
+from .under import router as under_router
+
+app.include_router(under_router)
+from .integrations import router as integration_router
+
+app.include_router(integration_router)

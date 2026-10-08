@@ -1,0 +1,24 @@
+{
+  "checks": [
+    {
+      "tool": "get_balance",
+      "passed": true,
+      "model": "deepseek-flash"
+    },
+    {
+      "tool": "search_knowledge",
+      "passed": true,
+      "model": "deepseek-flash"
+    },
+    {
+      "tool": "create_ticket",
+      "passed": true,
+      "model": "deepseek-flash"
+    },
+    {
+      "confirmation": "explicit and idempotent",
+      "passed": true
+    }
+  ],
+  "outgoing_messages": "intercepted; no Telegram delivery"
+}

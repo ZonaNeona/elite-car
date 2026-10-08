@@ -1,27 +1,34 @@
 {
-  "checked_at": "2026-10-07T18:26:18.471168+00:00",
+  "checked_at": "2026-10-08T09:08:16.620036+00:00",
   "processes": [
     {
       "name": "demo-elite-car-api",
       "status": "online",
-      "memory_mb": 130.3,
-      "restarts": 8
+      "memory_mb": 93.3,
+      "restarts": 17
     },
     {
       "name": "demo-elite-car-worker",
       "status": "online",
-      "memory_mb": 205.1,
-      "restarts": 7
+      "memory_mb": 214.8,
+      "restarts": 20
+    },
+    {
+      "name": "demo-elite-car-n8n-reader",
+      "status": "online",
+      "memory_mb": 42.4,
+      "restarts": 1
     }
   ],
-  "combined_memory_mb": 335.4,
-  "disk_free_gb": 15.8,
+  "combined_memory_mb": 350.5,
+  "disk_free_gb": 15.0,
   "health": {
     "status": "ok",
     "database": "ok",
-    "worker_age_seconds": 20.074649,
+    "worker_age_seconds": 8.458698,
     "pending": 0,
-    "telegram": false,
+    "telegram": true,
+    "telegram_username": "elitecar_demo_bot",
     "ai": true
   },
   "neighbors": [

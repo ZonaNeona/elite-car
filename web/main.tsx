@@ -1,6 +1,11 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { createRoot } from "react-dom/client";
-import { QueryClient, QueryClientProvider, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  QueryClient,
+  QueryClientProvider,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
 import {
   LayoutDashboard,
   CarFront,
@@ -29,7 +34,15 @@ import {
   Building2,
   LogOut,
 } from "lucide-react";
-import { api, Data, Row, dirs, getLabel, staffRoles, financialRoles } from "./lib";
+import {
+  api,
+  Data,
+  Row,
+  dirs,
+  getLabel,
+  staffRoles,
+  financialRoles,
+} from "./lib";
 import { SearchBox, Loading, Empty, ThemeToggle } from "./ui";
 import { Landing } from "./landing";
 import { ActionDialog, Action } from "./actions";
@@ -47,10 +60,14 @@ import {
   AIPanel,
 } from "./views";
 import "./style.css";
+import { UnderHood } from "./under/UnderHood";
+import { SourcesWidget } from "./under/Integrations";
 import { Operations } from "./operations";
 import { GlobalSearch } from "./search";
 const client = new QueryClient({
-  defaultOptions: { queries: { retry: 1, staleTime: 15000, refetchOnWindowFocus: false } },
+  defaultOptions: {
+    queries: { retry: 1, staleTime: 15000, refetchOnWindowFocus: false },
+  },
 });
 const nav = [
   ["today", "Сегодня", LayoutDashboard],
@@ -61,6 +78,7 @@ const nav = [
   ["finance", "Финансы", Wallet],
   ["analytics", "Аналитика", ChartNoAxesCombined],
   ["settings", "Источники и настройки", Settings],
+  ["under", "Под капотом", Wrench],
 ] as const;
 function App() {
   const [globalSearch, setGlobalSearch] = useState(false);
@@ -78,7 +96,16 @@ function App() {
   const [entered, setEntered] = useState(false);
   const [starting, setStarting] = useState(false);
   const [fatal, setFatal] = useState("");
-  const [page, setPage] = useState("today");
+  const [page, setPage] = useState(
+    location.hash === "#under" ? "under" : "today",
+  );
+  useEffect(() => {
+    history.replaceState(
+      null,
+      "",
+      location.pathname + location.search + (page === "under" ? "#under" : ""),
+    );
+  }, [page]);
   const [search, setSearch] = useState("");
   const [branch, setBranch] = useState("");
   const [direction, setDirection] = useState("");
@@ -89,7 +116,9 @@ function App() {
   const [toast, setToast] = useState("");
   const [menu, setMenu] = useState(false);
   const [online, setOnline] = useState(navigator.onLine);
-  const [notifications, setNotifications] = useState<{ title: string; at: string }[]>([]);
+  const [notifications, setNotifications] = useState<
+    { title: string; at: string }[]
+  >([]);
   const [showNotes, setShowNotes] = useState(false);
   const health = useQuery({
     queryKey: ["health"],
@@ -100,7 +129,11 @@ function App() {
     },
     refetchInterval: 30000,
   });
-  const session = useQuery({ queryKey: ["session"], queryFn: () => api("/session"), retry: false });
+  const session = useQuery({
+    queryKey: ["session"],
+    queryFn: () => api("/session"),
+    retry: false,
+  });
   const boot = useQuery<Data>({
     queryKey: ["bootstrap"],
     queryFn: () => api("/bootstrap"),
@@ -118,7 +151,10 @@ function App() {
   }, [end, period]);
   const report = useQuery({
     queryKey: ["report", start, end, branch, direction, data?.session.role],
-    queryFn: () => api(`/report?start=${start}&end=${end}&branch=${branch}&direction=${direction}`),
+    queryFn: () =>
+      api(
+        `/report?start=${start}&end=${end}&branch=${branch}&direction=${direction}`,
+      ),
     enabled: !!data,
   });
   useEffect(() => {
@@ -164,7 +200,10 @@ function App() {
   useEffect(() => {
     const tg = (window as any).Telegram?.WebApp;
     if (tg?.initData) {
-      api("/telegram/auth", { method: "POST", body: JSON.stringify({ initData: tg.initData }) })
+      api("/telegram/auth", {
+        method: "POST",
+        body: JSON.stringify({ initData: tg.initData }),
+      })
         .then(() => {
           setEntered(true);
           q.invalidateQueries();
@@ -173,7 +212,8 @@ function App() {
       tg.ready();
       tg.expand();
     }
-    if ("serviceWorker" in navigator) navigator.serviceWorker.register("/sw.js").catch(() => {});
+    if ("serviceWorker" in navigator)
+      navigator.serviceWorker.register("/sw.js").catch(() => {});
   }, [q]);
   async function begin(asRole?: string) {
     setStarting(true);
@@ -181,7 +221,10 @@ function App() {
     try {
       await api("/session", { method: "POST", body: "{}" });
       if (asRole && asRole !== "owner")
-        await api("/session/role", { method: "POST", body: JSON.stringify({ role: asRole }) });
+        await api("/session/role", {
+          method: "POST",
+          body: JSON.stringify({ role: asRole }),
+        });
       setEntered(true);
       await q.invalidateQueries();
     } catch (e: any) {
@@ -193,7 +236,10 @@ function App() {
   async function role(value: string) {
     try {
       await q.cancelQueries();
-      const session = await api("/session/role", { method: "POST", body: JSON.stringify({ role: value }) });
+      const session = await api("/session/role", {
+        method: "POST",
+        body: JSON.stringify({ role: value }),
+      });
       const fresh = await api<Data>("/bootstrap");
       setSelected(null);
       setPage("today");
@@ -202,7 +248,10 @@ function App() {
       q.setQueryData(["session"], session);
       q.setQueryData(["bootstrap"], fresh);
       q.removeQueries({
-        predicate: (query) => !["session", "bootstrap", "health"].includes(String(query.queryKey[0])),
+        predicate: (query) =>
+          !["session", "bootstrap", "health"].includes(
+            String(query.queryKey[0]),
+          ),
       });
       setEntered(true);
     } catch (e: any) {
@@ -215,7 +264,8 @@ function App() {
     q.invalidateQueries();
   }
   const open = (row: Row) => setSelected(row);
-  const act = (id: string, label: string, target?: Row) => setAction({ id, label, target });
+  const act = (id: string, label: string, target?: Row) =>
+    setAction({ id, label, target });
   if (!data) {
     if (boot.isLoading || session.isLoading)
       return (
@@ -230,17 +280,37 @@ function App() {
         error={fatal || boot.error?.message || ""}
         bot={health.data?.telegram_username}
         begin={begin}
+        under={async () => {
+          await begin("owner");
+          setPage("under");
+        }}
       />
     );
   }
   const common = { data, open, act, search, branch, direction };
   const pageInfo = nav.find((n) => n[0] === page) || nav[0];
   const allowedNav = nav
-    .filter((n) => !["finance", "analytics"].includes(n[0]) || financialRoles.includes(data.session.role))
-    .filter((n) => n[0] !== "settings" || ["owner", "admin", "finance"].includes(data.session.role))
+    .filter(
+      (n) =>
+        !["finance", "analytics"].includes(n[0]) ||
+        financialRoles.includes(data.session.role),
+    )
+    .filter(
+      (n) =>
+        n[0] !== "settings" ||
+        ["owner", "admin", "finance"].includes(data.session.role),
+    )
     .filter((n) => n[0] !== "people" || staffRoles.includes(data.session.role))
-    .filter((n) => data.session.role !== "screening" || ["today", "people"].includes(n[0]))
-    .filter((n) => data.session.role !== "service" || !["people", "contracts"].includes(n[0]));
+    .filter(
+      (n) =>
+        data.session.role !== "screening" ||
+        ["today", "people", "under"].includes(n[0]),
+    )
+    .filter(
+      (n) =>
+        data.session.role !== "service" ||
+        !["people", "contracts"].includes(n[0]),
+    );
   return (
     <div className="app">
       <aside className={"sidebar " + (menu ? "shown" : "")}>
@@ -282,7 +352,9 @@ function App() {
               <Icon size={18} />
               {label}
               {id === "service" && (
-                <span className="nav-count">{data.ticket.filter((t) => t.status !== "closed").length}</span>
+                <span className="nav-count">
+                  {data.ticket.filter((t) => t.status !== "closed").length}
+                </span>
               )}
             </button>
           ))}
@@ -296,7 +368,12 @@ function App() {
             </div>
             <ArrowUpRight size={16} />
           </button>
-          <a href="/guide.html" target="_blank" rel="noreferrer" className="demo-label">
+          <a
+            href="/guide.html"
+            target="_blank"
+            rel="noreferrer"
+            className="demo-label"
+          >
             Показ за 5 минут ↗
           </a>
           <div className="demo-label">
@@ -374,22 +451,36 @@ function App() {
         <main>
           <div className="page-heading">
             <div>
-              <div className="eyebrow">{mobileRole ? "ВАШ ЛИЧНЫЙ КАБИНЕТ" : "CAR CITY × ELITE CAR"}</div>
+              <div className="eyebrow">
+                {mobileRole ? "ВАШ ЛИЧНЫЙ КАБИНЕТ" : "CAR CITY × ELITE CAR"}
+              </div>
               <h1>
-                {page === "today" ? (mobileRole ? "Всё важное — под рукой" : "Обзор бизнеса") : pageInfo[1]}
+                {page === "today"
+                  ? mobileRole
+                    ? "Всё важное — под рукой"
+                    : "Обзор бизнеса"
+                  : pageInfo[1]}
                 <span className="heading-dot">.</span>
               </h1>
               <p>
                 {page === "today"
                   ? "Контроль процессов. Прозрачные цифры. Следующее действие."
                   : {
-                      fleet: "Каждый автомобиль — от выдачи до финансового результата.",
-                      people: "От первого обращения до долгосрочного сотрудничества.",
-                      contracts: "Условия, обязательства и история в одном месте.",
-                      service: "От обращения до возвращения автомобиля в работу.",
+                      fleet:
+                        "Каждый автомобиль — от выдачи до финансового результата.",
+                      people:
+                        "От первого обращения до долгосрочного сотрудничества.",
+                      contracts:
+                        "Условия, обязательства и история в одном месте.",
+                      service:
+                        "От обращения до возвращения автомобиля в работу.",
                       finance: "Каждая сумма имеет источник и основание.",
-                      analytics: "Разбирайтесь в результате до отдельной операции.",
-                      settings: "Источники данных, правила и состояние системы.",
+                      analytics:
+                        "Разбирайтесь в результате до отдельной операции.",
+                      settings:
+                        "Источники данных, правила и состояние системы.",
+                      under:
+                        "Реальный поиск, инструменты и исполнения — в одном месте.",
                     }[page]}
               </p>
             </div>
@@ -398,30 +489,47 @@ function App() {
                 <Sparkles size={16} />
                 Спросить AI
               </button>
-              {["owner", "admin", "manager", "driver", "client"].includes(data.session.role) &&
+              {["owner", "admin", "manager", "driver", "client"].includes(
+                data.session.role,
+              ) &&
                 ["today", "fleet", "contracts"].includes(page) && (
-                  <button className="button primary" onClick={() => act("contract.create", "Новый договор")}>
+                  <button
+                    className="button primary"
+                    onClick={() => act("contract.create", "Новый договор")}
+                  >
                     <Plus size={17} />
                     Новый договор
                   </button>
                 )}
               {page === "people" && (
-                <button className="button primary" onClick={() => act("client.create", "Новый клиент")}>
+                <button
+                  className="button primary"
+                  onClick={() => act("client.create", "Новый клиент")}
+                >
                   <Plus size={17} />
                   Новый клиент
                 </button>
               )}
               {page === "service" && (
-                <button className="button primary" onClick={() => act("ticket.create", "Новое обращение")}>
+                <button
+                  className="button primary"
+                  onClick={() => act("ticket.create", "Новое обращение")}
+                >
                   <Plus size={17} />
                   Создать заявку
                 </button>
               )}
             </div>
           </div>
-          <div className="filterbar">
+          <div
+            className="filterbar"
+            style={page === "under" ? { display: "none" } : undefined}
+          >
             <div className="segment">
-              <button className={!direction ? "selected" : ""} onClick={() => setDirection("")}>
+              <button
+                className={!direction ? "selected" : ""}
+                onClick={() => setDirection("")}
+              >
                 Вся группа
               </button>
               {Object.entries(dirs).map(([id, name]) => (
@@ -435,7 +543,11 @@ function App() {
               ))}
             </div>
             <div className="filter-right">
-              <select aria-label="Филиал" value={branch} onChange={(e) => setBranch(e.target.value)}>
+              <select
+                aria-label="Филиал"
+                value={branch}
+                onChange={(e) => setBranch(e.target.value)}
+              >
                 <option value="">Все площадки</option>
                 {data.branches.map((b) => (
                   <option key={b.id} value={b.id}>
@@ -443,14 +555,18 @@ function App() {
                   </option>
                 ))}
               </select>
-              <select aria-label="Период" value={period} onChange={(e) => setPeriod(e.target.value)}>
+              <select
+                aria-label="Период"
+                value={period}
+                onChange={(e) => setPeriod(e.target.value)}
+              >
                 <option value="7">7 дней</option>
                 <option value="30">30 дней</option>
                 <option value="90">90 дней</option>
               </select>
             </div>
           </div>
-          {page !== "today" && page !== "settings" && (
+          {page !== "today" && page !== "settings" && page !== "under" && (
             <div className="page-search">
               <SearchBox
                 value={search}
@@ -466,28 +582,54 @@ function App() {
                 report={report.data}
                 onTelegram={async () => {
                   try {
-                    const r = await api("/telegram/link", { method: "POST", body: "{}" });
+                    const r = await api("/telegram/link", {
+                      method: "POST",
+                      body: "{}",
+                    });
                     window.open(r.url, "_blank", "noopener");
                   } catch (e: any) {
                     setToast(e.message);
                   }
                 }}
               />
-            ) : ["manager", "service", "screening"].includes(data.session.role) ? (
+            ) : ["manager", "service", "screening"].includes(
+                data.session.role,
+              ) ? (
               <Operations data={data} open={open} />
             ) : (
               <Dashboard {...common} report={report.data} go={setPage} />
             ))}
+          {page === "under" && <UnderHood data={data} open={open} />}
+          {page === "today" &&
+            ["owner", "admin", "finance", "manager"].includes(
+              data.session.role,
+            ) && (
+              <SourcesWidget
+                data={data}
+                open={open}
+                go={() => setPage("under")}
+              />
+            )}
           {page === "fleet" && <Fleet {...common} />}
           {page === "people" && <People {...common} />}
           {page === "contracts" && <Contracts {...common} />}
           {page === "service" && <Service {...common} />}
-          {page === "finance" && <Finance {...common} report={report.data} done={done} />}
-          {page === "analytics" && <Analytics {...common} report={report.data} />}
+          {page === "finance" && (
+            <Finance {...common} report={report.data} done={done} />
+          )}
+          {page === "analytics" && (
+            <Analytics {...common} report={report.data} />
+          )}
           {page === "settings" && <SettingsPage {...common} done={done} />}
-          {report.error && <div className="error">Не удалось обновить отчёт: {report.error.message}</div>}
+          {report.error && (
+            <div className="error">
+              Не удалось обновить отчёт: {report.error.message}
+            </div>
+          )}
           <div className="page-footer">
-            <span>Концепт для ELITE CAR · учебные данные, не официальный сервис</span>
+            <span>
+              Концепт для ELITE CAR · учебные данные, не официальный сервис
+            </span>
             <span>Изменения сохраняются в вашей сессии</span>
           </div>
         </main>
@@ -495,19 +637,52 @@ function App() {
       {mobileRole && (
         <nav className="mobile-bottom-nav">
           {allowedNav
-            .filter((n) => ["today", "contracts", "service", "finance"].includes(n[0]))
+            .filter((n) =>
+              ["today", "contracts", "service", "finance"].includes(n[0]),
+            )
             .map(([id, label, Icon]) => (
-              <button key={id} className={page === id ? "active" : ""} onClick={() => setPage(id)}>
+              <button
+                key={id}
+                className={page === id ? "active" : ""}
+                onClick={() => setPage(id)}
+              >
                 <Icon size={20} />
-                <span>{id === "today" ? "Главная" : id === "service" ? "Помощь" : label}</span>
+                <span>
+                  {id === "today"
+                    ? "Главная"
+                    : id === "service"
+                      ? "Помощь"
+                      : label}
+                </span>
               </button>
             ))}
         </nav>
       )}
-      {selected && <DetailPanel row={selected} {...common} onClose={() => setSelected(null)} />}
-      {action && <ActionDialog action={action} data={data} onClose={() => setAction(null)} onDone={done} />}
-      {globalSearch && <GlobalSearch data={data} open={open} onClose={() => setGlobalSearch(false)} />}
-      {ai && <AIPanel data={data} target={selected} onClose={() => setAi(false)} />}
+      {selected && (
+        <DetailPanel
+          row={selected}
+          {...common}
+          onClose={() => setSelected(null)}
+        />
+      )}
+      {action && (
+        <ActionDialog
+          action={action}
+          data={data}
+          onClose={() => setAction(null)}
+          onDone={done}
+        />
+      )}
+      {globalSearch && (
+        <GlobalSearch
+          data={data}
+          open={open}
+          onClose={() => setGlobalSearch(false)}
+        />
+      )}
+      {ai && (
+        <AIPanel data={data} target={selected} onClose={() => setAi(false)} />
+      )}
       {toast && (
         <div className="toast" role="status">
           <CheckCircle2 size={18} />
@@ -521,7 +696,11 @@ function App() {
         <div className="notifications card">
           <div className="card-head">
             <h3>События пространства</h3>
-            <button className="icon-button" onClick={() => setShowNotes(false)} aria-label="Закрыть">
+            <button
+              className="icon-button"
+              onClick={() => setShowNotes(false)}
+              aria-label="Закрыть"
+            >
               <X size={16} />
             </button>
           </div>

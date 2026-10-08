@@ -20,3 +20,4 @@ shots/
 *.key
 *.token
 LAST_RELEASE
+*credentials*.json

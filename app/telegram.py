@@ -19,13 +19,18 @@ from functools import lru_cache
 from urllib.parse import parse_qsl
 
 from aiogram import Bot
-from aiogram.types import BufferedInputFile, InlineKeyboardButton, InlineKeyboardMarkup, WebAppInfo
+from aiogram.types import (
+    BufferedInputFile,
+    InlineKeyboardButton,
+    InlineKeyboardMarkup,
+    WebAppInfo,
+)
 from fastapi import HTTPException
-from sqlalchemy import select
+from sqlalchemy import select, func, text as sqltext
 
 from psycopg.types.range import Range
 
-from .db import FILES, ROOT, URL, Booking, Item, Space, db, now
+from .db import FILES, ROOT, URL, Booking, Item, Space, Job, Event, db, now
 from .domain import command, fail, get, today, visible
 from .reports import report
 from .seed import create_space
@@ -50,7 +55,9 @@ def validate(raw):
         fail("Telegram не подключён", 503)
     secret = hmac.new(b"WebAppData", token.encode(), hashlib.sha256).digest()
     expected = hmac.new(
-        secret, "\n".join(f"{k}={v}" for k, v in sorted(pairs.items())).encode(), hashlib.sha256
+        secret,
+        "\n".join(f"{k}={v}" for k, v in sorted(pairs.items())).encode(),
+        hashlib.sha256,
     ).hexdigest()
     if not hmac.compare_digest(expected, received):
         fail("Некорректная подпись Telegram", 403)
@@ -78,11 +85,15 @@ def kb(*rows):
         buttons = []
         for text, action in row:
             if action == "app":
-                buttons.append(InlineKeyboardButton(text=text, web_app=WebAppInfo(url=URL)))
+                buttons.append(
+                    InlineKeyboardButton(text=text, web_app=WebAppInfo(url=URL))
+                )
             elif action.startswith("url:"):
                 buttons.append(InlineKeyboardButton(text=text, url=action[4:]))
             else:
-                buttons.append(InlineKeyboardButton(text=text, callback_data=action[:64]))
+                buttons.append(
+                    InlineKeyboardButton(text=text, callback_data=action[:64])
+                )
         out.append(buttons)
     return InlineKeyboardMarkup(inline_keyboard=out)
 
@@ -121,10 +132,18 @@ async def _deliver(chat, messages, callback_id=None):
                     continue
             if m.get("document"):
                 raw, name = m["document"]
-                await bot.send_document(chat, BufferedInputFile(raw, filename=name), caption=m["text"][:1000])
+                await bot.send_document(
+                    chat,
+                    BufferedInputFile(raw, filename=name),
+                    caption=m["text"][:1000],
+                )
                 continue
             await bot.send_message(
-                chat, m["text"][:4000], parse_mode="HTML", reply_markup=markup, disable_web_page_preview=True
+                chat,
+                m["text"][:4000],
+                parse_mode="HTML",
+                reply_markup=markup,
+                disable_web_page_preview=True,
             )
     finally:
         await bot.session.close()
@@ -168,7 +187,11 @@ def staff_picker():
         "text": "Какой отдел? У каждого свои права: менеджер подтверждает брони, сервис ведёт ремонт, "
         "финансы согласуют деньги.",
         "kb": kb(
-            [("Менеджер парка", "role:manager"), ("Сервис", "role:service"), ("Финансы", "role:finance")],
+            [
+                ("Менеджер парка", "role:manager"),
+                ("Сервис", "role:service"),
+                ("Финансы", "role:finance"),
+            ],
             [("← Назад", "roles")],
         ),
     }
@@ -189,7 +212,10 @@ def menu(sp):
             [("📱 Кабинет", "app")],
         ],
         "manager": [
-            [("📊 Парк сегодня", "m:summary"), ("🧾 Брони на подтверждение", "m:drafts")],
+            [
+                ("📊 Парк сегодня", "m:summary"),
+                ("🧾 Брони на подтверждение", "m:drafts"),
+            ],
             [("🛠 Открытые заявки", "s:tickets"), ("📱 Кабинет", "app")],
         ],
         "service": [
@@ -197,7 +223,10 @@ def menu(sp):
             [("📱 Кабинет", "app")],
         ],
         "finance": [
-            [("💳 Сметы на согласование", "f:estimates"), ("🏖 Заявления на выходные", "f:holidays")],
+            [
+                ("💳 Сметы на согласование", "f:estimates"),
+                ("🏖 Заявления на выходные", "f:holidays"),
+            ],
             [("📈 Экономика за 30 дней", "f:economy"), ("📱 Кабинет", "app")],
         ],
     }.get(role, [])
@@ -229,7 +258,11 @@ def driver_action(s, sp, act, uid_key):
     c = active_contract(s, sp)
     if act == "balance":
         r = report(s, sp)
-        rate = rub(c.data["rate"]) + " в сутки · график " + c.data["schedule"] if c else "договора нет"
+        rate = (
+            rub(c.data["rate"]) + " в сутки · график " + c.data["schedule"]
+            if c
+            else "договора нет"
+        )
         return [
             {
                 "text": "<b>Баланс за 30 дней</b>\n"
@@ -240,14 +273,21 @@ def driver_action(s, sp, act, uid_key):
         ]
     if act == "car":
         if not c:
-            return [{"text": "Автомобиль ещё не закреплён — оформите договор.", "kb": back(sp)}]
+            return [
+                {
+                    "text": "Автомобиль ещё не закреплён — оформите договор.",
+                    "kb": back(sp),
+                }
+            ]
         v = get(s, sp, c.data["vehicle"], "vehicle")
         d = v.data
         return [
             {
                 "photo": d.get("image"),
                 "text": f"<b>{esc(d['model'])}</b> · {d['year']}\n{v.code} · {esc(d['plate'])}\n"
-                f"Пробег {d['mileage']:,} км · следующее ТО на {d['next_to']:,} км\n".replace(",", " ")
+                f"Пробег {d['mileage']:,} км · следующее ТО на {d['next_to']:,} км\n".replace(
+                    ",", " "
+                )
                 + f"Договор {c.code}: {rub(c.data['rate'])}/сутки, график {c.data['schedule']}",
                 "kb": back(sp),
             }
@@ -271,18 +311,37 @@ def driver_action(s, sp, act, uid_key):
     if act == "totix":
         last = sp.data.get("tg_last")
         if not last:
-            return [{"text": "Опишите проблему одним сообщением — можно с фото.", "kb": back(sp)}]
+            return [
+                {
+                    "text": "Опишите проблему одним сообщением — можно с фото.",
+                    "kb": back(sp),
+                }
+            ]
         sp.data = {k: v for k, v in sp.data.items() if k != "tg_last"}
         return [ticket_reply(s, sp, last, last, None, [], uid_key)]
     if act == "ticket":
         sp.data = {**sp.data, "tg_wait": "ticket"}
-        return [{"text": "Опишите проблему одним сообщением — можно с фото. Заявка уйдёт в сервис."}]
+        return [
+            {
+                "text": "Опишите проблему одним сообщением — можно с фото. Заявка уйдёт в сервис."
+            }
+        ]
     if act == "pdf":
         if not c:
-            return [{"text": "Документы появятся после оформления договора.", "kb": back(sp)}]
+            return [
+                {
+                    "text": "Документы появятся после оформления договора.",
+                    "kb": back(sp),
+                }
+            ]
         from .documents import render
 
-        return [{"document": (render(s, sp, c), f"elitecar-{c.code}.pdf"), "text": DISCLAIMER}]
+        return [
+            {
+                "document": (render(s, sp, c), f"elitecar-{c.code}.pdf"),
+                "text": DISCLAIMER,
+            }
+        ]
     return [menu(sp)]
 
 
@@ -307,7 +366,9 @@ def client_action(s, sp, act, arg, uid_key):
         cars = [
             v
             for v in visible(s, sp, "vehicle")
-            if v.data["direction"] == "rental" and v.data["status"] == "ready" and v.id not in busy
+            if v.data["direction"] == "rental"
+            and v.data["status"] == "ready"
+            and v.id not in busy
         ]
         seen, picks = set(), []
         for v in cars:  # по одной машине каждой модели
@@ -321,10 +382,22 @@ def client_action(s, sp, act, arg, uid_key):
                 {
                     "photo": d.get("image"),
                     "text": f"<b>{esc(d['model'])}</b> · {d['class']}\n{rub(d['rate'])} в сутки · {d['year']}",
-                    "kb": kb([(f"Забронировать на 3 дня · {rub(int(d['rate']) * 3)}", f"c:book:{v.id}")]),
+                    "kb": kb(
+                        [
+                            (
+                                f"Забронировать на 3 дня · {rub(int(d['rate']) * 3)}",
+                                f"c:book:{v.id}",
+                            )
+                        ]
+                    ),
                 }
             )
-        out.append({"text": "Бронь подтверждает менеджер парка — после проверки документов.", "kb": back(sp)})
+        out.append(
+            {
+                "text": "Бронь подтверждает менеджер парка — после проверки документов.",
+                "kb": back(sp),
+            }
+        )
         return out
     if act == "book":
         start = today() + timedelta(days=1)
@@ -332,7 +405,11 @@ def client_action(s, sp, act, arg, uid_key):
             s,
             sp,
             "contract.create",
-            {"vehicle": arg, "start": str(start), "end": str(start + timedelta(days=3))},
+            {
+                "vehicle": arg,
+                "start": str(start),
+                "end": str(start + timedelta(days=3)),
+            },
             uid_key,
         )
         if err:
@@ -345,7 +422,9 @@ def client_action(s, sp, act, arg, uid_key):
             }
         ]
     if act == "mine":
-        cs = sorted(visible(s, sp, "contract"), key=lambda c: c.created, reverse=True)[:5]
+        cs = sorted(visible(s, sp, "contract"), key=lambda c: c.created, reverse=True)[
+            :5
+        ]
         status = {
             "draft": "ждёт подтверждения",
             "confirmed": "подтверждена",
@@ -358,15 +437,29 @@ def client_action(s, sp, act, arg, uid_key):
             f"{status.get(c.data['status'], c.data['status'])}"
             for c in cs
         ]
-        return [{"text": "<b>Мои брони</b>\n" + ("\n".join(lines) or "Пока нет"), "kb": back(sp)}]
+        return [
+            {
+                "text": "<b>Мои брони</b>\n" + ("\n".join(lines) or "Пока нет"),
+                "kb": back(sp),
+            }
+        ]
     return [menu(sp)]
 
 
 def staff_action(s, sp, act, arg, uid_key):
     if act == "summary":
         vs = visible(s, sp, "vehicle")
-        by = {k: sum(1 for v in vs if v.data["status"] == k) for k in ("ready", "repair", "inspection")}
-        busy = len({c.data["vehicle"] for c in visible(s, sp, "contract") if c.data["status"] == "active"})
+        by = {
+            k: sum(1 for v in vs if v.data["status"] == k)
+            for k in ("ready", "repair", "inspection")
+        }
+        busy = len(
+            {
+                c.data["vehicle"]
+                for c in visible(s, sp, "contract")
+                if c.data["status"] == "active"
+            }
+        )
         open_t = [t for t in visible(s, sp, "ticket") if t.data["status"] != "closed"]
         return [
             {
@@ -377,10 +470,15 @@ def staff_action(s, sp, act, arg, uid_key):
             }
         ]
     if act == "drafts":
-        drafts = [c for c in visible(s, sp, "contract") if c.data["status"] == "draft"][-5:]
+        drafts = [c for c in visible(s, sp, "contract") if c.data["status"] == "draft"][
+            -5:
+        ]
         if not drafts:
             return [
-                {"text": "Новых броней нет. Создайте бронь как клиент — она появится здесь.", "kb": back(sp)}
+                {
+                    "text": "Новых броней нет. Создайте бронь как клиент — она появится здесь.",
+                    "kb": back(sp),
+                }
             ]
         return [
             {
@@ -389,14 +487,25 @@ def staff_action(s, sp, act, arg, uid_key):
                 "kb": kb([("✅ Подтвердить", f"m:confirm:{c.id}")]),
             }
             for c in drafts
-        ] + [{"text": "Подтверждение проверяет документы клиента и пересечение броней.", "kb": back(sp)}]
+        ] + [
+            {
+                "text": "Подтверждение проверяет документы клиента и пересечение броней.",
+                "kb": back(sp),
+            }
+        ]
     if act == "confirm":
         r, err = run(s, sp, "contract.confirm", {"id": arg}, uid_key)
         return [
-            {"text": err or f"Бронь {r['code']} подтверждена — клиент увидит это в боте.", "kb": back(sp)}
+            {
+                "text": err
+                or f"Бронь {r['code']} подтверждена — клиент увидит это в боте.",
+                "kb": back(sp),
+            }
         ]
     if act == "tickets":
-        ts = [t for t in visible(s, sp, "ticket") if t.data["status"] not in ("closed",)][:6]
+        ts = [
+            t for t in visible(s, sp, "ticket") if t.data["status"] not in ("closed",)
+        ][:6]
         nxt = {
             "new": ("Составить смету", "s:est"),
             "approved": ("Взять в работу", "s:start"),
@@ -417,18 +526,31 @@ def staff_action(s, sp, act, arg, uid_key):
             out.append(
                 {
                     "text": f"<b>{t.code}</b> · {esc(d['title'])}\n{esc(v.data['model'])} · {status.get(d['status'], d['status'])}"
-                    + (f" · {rub(d['estimate'])}" if float(d.get("estimate") or 0) else ""),
+                    + (
+                        f" · {rub(d['estimate'])}"
+                        if float(d.get("estimate") or 0)
+                        else ""
+                    ),
                     "kb": kb([(step[0], f"{step[1]}:{t.id}")]) if step else None,
                 }
             )
-        out.append({"text": "Ведёт ремонт роль «Сервис», смету согласуют «Финансы».", "kb": back(sp)})
+        out.append(
+            {
+                "text": "Ведёт ремонт роль «Сервис», смету согласуют «Финансы».",
+                "kb": back(sp),
+            }
+        )
         return out
     if act in ("est", "start", "done"):
         t = get(s, sp, arg, "ticket")
         action, payload = {
             "est": (
                 "ticket.estimate",
-                {"id": arg, "amount": float(t.data.get("estimate") or 0) or 9500, "payer": "company"},
+                {
+                    "id": arg,
+                    "amount": float(t.data.get("estimate") or 0) or 9500,
+                    "payer": "company",
+                },
             ),
             "start": ("ticket.start", {"id": arg}),
             "done": ("ticket.complete", {"id": arg}),
@@ -447,7 +569,12 @@ def finance_action(s, sp, act, arg, uid_key):
     if act == "estimates":
         ts = [t for t in visible(s, sp, "ticket") if t.data["status"] == "estimate"][:5]
         if not ts:
-            return [{"text": "Смет на согласовании нет. Сервис отправит — появятся здесь.", "kb": back(sp)}]
+            return [
+                {
+                    "text": "Смет на согласовании нет. Сервис отправит — появятся здесь.",
+                    "kb": back(sp),
+                }
+            ]
         return [
             {
                 "text": f"<b>{t.code}</b> · {esc(t.data['title'])}\n{esc(get(s, sp, t.data['vehicle']).data['model'])} · "
@@ -460,10 +587,15 @@ def finance_action(s, sp, act, arg, uid_key):
         r, err = run(s, sp, "ticket.approve", {"id": arg}, uid_key)
         return [{"text": err or f"Смета {r['code']} согласована.", "kb": back(sp)}]
     if act == "holidays":
-        cs = [c for c in visible(s, sp, "contract") if c.data.get("holiday_request")][:5]
+        cs = [c for c in visible(s, sp, "contract") if c.data.get("holiday_request")][
+            :5
+        ]
         if not cs:
             return [
-                {"text": "Заявлений нет. Попросите выходной как водитель — оно придёт сюда.", "kb": back(sp)}
+                {
+                    "text": "Заявлений нет. Попросите выходной как водитель — оно придёт сюда.",
+                    "kb": back(sp),
+                }
             ]
         return [
             {
@@ -471,14 +603,26 @@ def finance_action(s, sp, act, arg, uid_key):
                 "kb": kb([("✅ Согласовать", f"f:hday:{c.id}")]),
             }
             for c in cs
-        ] + [{"text": "После согласования начисление за день снимается сторно.", "kb": back(sp)}]
+        ] + [
+            {
+                "text": "После согласования начисление за день снимается сторно.",
+                "kb": back(sp),
+            }
+        ]
     if act == "hday":
         r, err = run(s, sp, "contract.approve_holiday", {"id": arg}, uid_key)
-        return [{"text": err or f"Выходной по договору {r['code']} согласован.", "kb": back(sp)}]
+        return [
+            {
+                "text": err or f"Выходной по договору {r['code']} согласован.",
+                "kb": back(sp),
+            }
+        ]
     if act == "economy":
         r = report(s, sp)
         top = sorted(r["rows"], key=lambda x: float(x["result"]))[:3]
-        worst = "\n".join(f"· {esc(x['model'])} {x['code']}: {rub(x['result'])}" for x in top)
+        worst = "\n".join(
+            f"· {esc(x['model'])} {x['code']}: {rub(x['result'])}" for x in top
+        )
         return [
             {
                 "text": f"<b>Экономика за 30 дней</b>\nВыручка: {rub(r['revenue'])}\nРасходы: {rub(r['expenses'])}\n"
@@ -494,7 +638,11 @@ def finance_action(s, sp, act, arg, uid_key):
 
 
 def _space(s, telegram_id, chat_id):
-    sp = s.scalar(select(Space).where(Space.data["tg_user"].astext == telegram_id).with_for_update())
+    sp = s.scalar(
+        select(Space)
+        .where(Space.data["tg_user"].astext == telegram_id)
+        .with_for_update()
+    )
     created = False
     if not sp:
         sp = create_space(s)
@@ -515,7 +663,12 @@ def _save_photo(s, sp, raw, update_id):
                 kind="file",
                 code=f"TG-{update_id}",
                 version=1,
-                data={"name": "telegram-photo.jpg", "ext": ".jpg", "size": len(raw), "creator_role": sp.role},
+                data={
+                    "name": "telegram-photo.jpg",
+                    "ext": ".jpg",
+                    "size": len(raw),
+                    "creator_role": sp.role,
+                },
             )
         )
         folder = FILES / sp.id
@@ -524,7 +677,9 @@ def _save_photo(s, sp, raw, update_id):
     return fid
 
 
-HELP = re.compile(r"что (ты )?(умеешь|можешь)|^помо(щь|ги)|^help\b|^меню$|^привет|^здравствуй", re.I)
+HELP = re.compile(
+    r"что (ты )?(умеешь|можешь)|^помо(щь|ги)|^help\b|^меню$|^привет|^здравствуй", re.I
+)
 
 TRIAGE = """Ты бот таксопарка Car City (учебный концепт). Тебе пишет {role}.
 Определи тип сообщения:
@@ -545,18 +700,29 @@ def classify(space_id, role, text):
     if not ai.configured():
         return None
     # база знаний небольшая — отдаём её целиком: подбор по словам промахивается («документы» ≠ «паспорт, ВУ»)
-    sources = [{"id": i, "title": x["title"], "text": x["text"]} for i, x in enumerate(SOURCES)]
+    sources = [
+        {"id": i, "title": x["title"], "text": x["text"]} for i, x in enumerate(SOURCES)
+    ]
     messages = [
-        {"role": "system", "content": TRIAGE.format(role=ROLES.get(role, role).lower())},
+        {
+            "role": "system",
+            "content": TRIAGE.format(role=ROLES.get(role, role).lower()),
+        },
         {
             "role": "user",
-            "content": json.dumps({"message": text[:1500], "sources": sources}, ensure_ascii=False),
+            "content": json.dumps(
+                {"message": text[:1500], "sources": sources}, ensure_ascii=False
+            ),
         },
     ]
     for provider, model in ai.chain():
         try:
-            answer, _ = ai.call(space_id, model, messages, max_tokens=700, provider=provider)
-        except Exception:  # лимит, сбой провайдера, невалидный JSON — пробуем следующую модель
+            answer, _ = ai.call(
+                space_id, model, messages, max_tokens=700, provider=provider
+            )
+        except (
+            Exception
+        ):  # лимит, сбой провайдера, невалидный JSON — пробуем следующую модель
             continue
         kind = answer.fields.get("kind")
         if kind not in ("question", "problem"):
@@ -571,19 +737,23 @@ def classify(space_id, role, text):
                 if answer.fields.get("priority") in ("urgent", "technical", "normal")
                 else None
             ),
-            "sources_line": ("\n\n<i>Источник: " + esc("; ".join(used)) + "</i>") if used else "",
+            "sources_line": (
+                ("\n\n<i>Источник: " + esc("; ".join(used)) + "</i>") if used else ""
+            ),
         }
     return None
 
 
 def help_text(sp):
-    common = "Пишите своими словами: на вопрос отвечу по правилам парка, а проблему сразу передам в сервис заявкой."
+    common = "Пишите своими словами: найду ответ в правилах или ваших данных. Для проблемы подготовлю заявку — создание подтвердите кнопкой."
     by_role = {
         "driver": "Как водитель вы можете: посмотреть баланс и долг, свою машину, попросить выходной, сообщить о проблеме (можно с фото), скачать договор.",
         "client": "Как клиент проката вы можете: подобрать свободную машину и забронировать её, посмотреть свои брони, задать вопрос или сообщить о проблеме.",
     }
     return {
-        "text": by_role.get(sp.role, "У сотрудников — свои кнопки в меню роли.") + "\n\n" + common,
+        "text": by_role.get(sp.role, "У сотрудников — свои кнопки в меню роли.")
+        + "\n\n"
+        + common,
         "kb": menu(sp)["kb"],
     }
 
@@ -595,9 +765,16 @@ def ticket_reply(s, sp, text, title, priority, photos, key):
         owned = visible(s, sp, "vehicle")
         vehicle = owned[0].id if owned and sp.role == "driver" else None
     if not vehicle:
-        return {"text": "Сначала оформите аренду — обращение привязывается к машине.", "kb": back(sp)}
+        return {
+            "text": "Сначала оформите аренду — обращение привязывается к машине.",
+            "kb": back(sp),
+        }
     if priority not in ("urgent", "technical", "normal"):
-        priority = "urgent" if any(w in text.lower() for w in ("дтп", "авари", "не завод")) else "technical"
+        priority = (
+            "urgent"
+            if any(w in text.lower() for w in ("дтп", "авари", "не завод"))
+            else "technical"
+        )
     r, err = run(
         s,
         sp,
@@ -613,12 +790,83 @@ def ticket_reply(s, sp, text, title, priority, photos, key):
     )
     if err:
         return {"text": esc(err), "kb": back(sp)}
-    urgent = " Срочная — сотрудник свяжется в течение 15 минут." if priority == "urgent" else ""
+    urgent = (
+        " Срочная — сотрудник свяжется в течение 15 минут."
+        if priority == "urgent"
+        else ""
+    )
     return {
         "text": f"Заявка <b>{r['code']}</b> «{esc(title[:80])}» создана{' с фото' if photos else ''} и ушла в сервис.{urgent} "
         "Статус пришлю сюда.",
         "kb": back(sp),
     }
+
+
+def agent_message(space_id, role, message, key):
+    from .agent import run as run_agent
+
+    jid = hashlib.sha256(("agent:" + key).encode()).hexdigest()[:32]
+    with db() as s:
+        s.execute(
+            sqltext("SELECT pg_advisory_xact_lock(hashtext(:id))"), {"id": space_id}
+        )
+        old = s.get(Job, jid)
+        if old:
+            return (
+                old.result
+                if old.state == "done"
+                else {
+                    "answer": "Запрос уже обрабатывался. Откройте кабинет или повторите вопрос позже.",
+                    "drafts": [],
+                    "sources": [],
+                }
+            )
+        count = s.scalar(
+            select(func.count())
+            .select_from(Job)
+            .where(
+                Job.space == space_id,
+                Job.kind == "ai",
+                Job.due > now() - timedelta(hours=1),
+            )
+        )
+        if count >= 10:
+            return {
+                "answer": "Лимит 10 AI-запросов в час исчерпан. Кнопки кабинета доступны.",
+                "drafts": [],
+                "sources": [],
+            }
+        j = Job(
+            id=jid,
+            space=space_id,
+            kind="ai",
+            state="running",
+            attempts=1,
+            lease=now() + timedelta(minutes=6),
+            data={"mode": "agent", "prompt": message[:2000], "role": role},
+            result={},
+        )
+        s.add(j)
+    try:
+        result = run_agent(j)
+        with db() as s:
+            row = s.get(Job, jid)
+            if row:
+                row.state = "done"
+                row.result = result
+        return result
+    except Exception:
+        result = {
+            "answer": "AI временно недоступен. Воспользуйтесь кнопками кабинета; автоматическая заявка не создавалась.",
+            "drafts": [],
+            "sources": [],
+        }
+        with db() as s:
+            row = s.get(Job, jid)
+            if row:
+                row.state = "failed"
+                row.result = {"error": result["answer"]}
+        return result
 
 
 def process(data):
@@ -629,19 +877,39 @@ def process(data):
     if not user or chat.get("type") != "private":
         return {"ignored": True}
     key = "tg:" + str(data["update_id"])
-    raw = asyncio.run(photo_bytes(m["photo"][-1]["file_id"])) if (not cb and m.get("photo")) else None
+    raw = (
+        asyncio.run(photo_bytes(m["photo"][-1]["file_id"]))
+        if (not cb and m.get("photo"))
+        else None
+    )
     triage = None
     text_in = (m.get("text") or "").strip() if not cb else ""
     if text_in and not text_in.startswith("/") and not HELP.search(text_in) and not raw:
         # LLM вызываем до основной транзакции: она держит блокировку пространства,
         # а учёт расхода AI пишется отдельным соединением
         with db() as s:
-            sp0 = s.scalar(select(Space).where(Space.data["tg_user"].astext == str(user["id"])))
+            sp0 = s.scalar(
+                select(Space).where(Space.data["tg_user"].astext == str(user["id"]))
+            )
             ctx = (sp0.id, sp0.role, sp0.data.get("tg_wait")) if sp0 else None
-        if ctx and ctx[1] in ("driver", "client") and ctx[2] != "ticket":
-            triage = classify(ctx[0], ctx[1], text_in)
+        if ctx and ctx[1] in ROLES and ctx[2] != "ticket":
+            triage = agent_message(ctx[0], ctx[1], text_in, key)
     with db() as s:
         sp, created = _space(s, str(user["id"]), chat["id"])
+        received = s.scalar(
+            select(Event.id).where(
+                Event.space == sp.id, Event.data["webhook_key"].astext == key
+            )
+        )
+        if not received:
+            s.add(
+                Event(
+                    space=sp.id,
+                    title="Telegram: входящий вебхук обработан",
+                    role=sp.role,
+                    data={"channel": "telegram", "webhook_key": key},
+                )
+            )
         if cb:
             action = cb.get("data", "")
             head, _, rest = action.partition(":")
@@ -654,9 +922,24 @@ def process(data):
                 sp.role = act
                 sp.data = {k: v for k, v in sp.data.items() if k != "tg_wait"}
                 out = [
-                    {"text": f"Вы вошли как <b>{ROLES[act]}</b>. Данные и права — только этой роли."},
+                    {
+                        "text": f"Вы вошли как <b>{ROLES[act]}</b>. Данные и права — только этой роли."
+                    },
                     menu(sp),
                 ]
+            elif head == "agentconfirm":
+                from .agent import confirm
+
+                try:
+                    r = confirm(s, sp, rest, via="telegram")
+                    out = [
+                        {
+                            "text": "Заявка <b>" + esc(r["code"]) + "</b> создана.",
+                            "kb": back(sp),
+                        }
+                    ]
+                except HTTPException as e:
+                    out = [{"text": esc(str(e.detail)), "kb": back(sp)}]
             elif head == "d":
                 out = driver_action(s, sp, act, key)
             elif head == "c":
@@ -679,6 +962,33 @@ def process(data):
                 out = driver_action(s, sp, "car", key)
             elif HELP.search(text):
                 out = [help_text(sp)]
+            elif triage and not raw:
+                buttons = [
+                    (
+                        "Подтвердить: " + d["payload"]["title"][:35],
+                        "agentconfirm:" + d["id"],
+                    )
+                    for d in triage.get("drafts", [])
+                ]
+                citations = "; ".join(
+                    dict.fromkeys(x["title"] for x in triage.get("sources", []))
+                )
+                msg = re.sub(
+                    r"\*\*([^*\n]+)\*\*", r"<b>\1</b>", esc(triage["answer"][:3200])
+                ) + (
+                    "\n\n<i>Источники: " + esc(citations[:500]) + "</i>"
+                    if citations
+                    else ""
+                )
+                out = [
+                    {
+                        "text": msg,
+                        "kb": kb(
+                            *[[(label, callback)] for label, callback in buttons],
+                            [("← Меню", "menu")],
+                        ),
+                    }
+                ]
             elif sp.role in ("driver", "client") and (text or raw):
                 waiting = sp.data.get("tg_wait") == "ticket"
                 sp.data = {k: v for k, v in sp.data.items() if k != "tg_wait"}
@@ -688,13 +998,26 @@ def process(data):
                     out = [
                         {
                             "text": esc(triage["answer"]) + triage["sources_line"],
-                            "kb": kb([("🛠 Это проблема — создать заявку", "d:totix")], [("← Меню", "menu")]),
+                            "kb": kb(
+                                [("🛠 Это проблема — создать заявку", "d:totix")],
+                                [("← Меню", "menu")],
+                            ),
                         }
                     ]
                 else:
                     photos = [_save_photo(s, sp, raw, data["update_id"])] if raw else []
                     title = (triage or {}).get("title") or text or "Фото из Telegram"
-                    out = [ticket_reply(s, sp, text, title, (triage or {}).get("priority"), photos, key)]
+                    out = [
+                        ticket_reply(
+                            s,
+                            sp,
+                            text,
+                            title,
+                            (triage or {}).get("priority"),
+                            photos,
+                            key,
+                        )
+                    ]
             else:
                 out = [menu(sp)]
         chat_id = chat["id"]

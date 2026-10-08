@@ -5,13 +5,16 @@
 
 import itertools
 import re
+import json
+from pathlib import Path
 
-from sqlalchemy import delete, select
+from sqlalchemy import delete, select, func
 
-from app import telegram
-from app.db import Space, db
+from app import telegram, domain
+from app.db import Space, Item, Job, Event, db
 
 TG = 9000001
+checks = []
 seq = itertools.count(900000000)
 last_kb: list[list[str]] = []
 
@@ -24,19 +27,36 @@ async def fake_deliver(chat, messages, callback_id=None):
         tag = "📷 " if m.get("photo") else "📄 " if m.get("document") else ""
         print("   ←", tag + text.replace("\n", " | ")[:230])
         if m.get("kb"):
-            buttons = [b.callback_data or ("app" if b.web_app else b.url) for row in m["kb"].inline_keyboard for b in row]
+            buttons = [
+                b.callback_data or ("app" if b.web_app else b.url)
+                for row in m["kb"].inline_keyboard
+                for b in row
+            ]
             last_kb += buttons
             print("     [" + ", ".join(buttons) + "]")
 
 
 telegram._deliver = fake_deliver
+
+
+# Smoke never creates outgoing notification jobs for the synthetic Telegram user.
+def local_audit(s, sp, title, target=None, **data):
+    s.add(Event(space=sp.id, title=title, target=target, role=sp.role, data=data))
+
+
+domain.audit = local_audit
 user = {"id": TG, "first_name": "Тест"}
 chat = {"id": TG, "type": "private"}
 
 
 def msg(text):
     print(f"\n→ «{text}»")
-    telegram.process({"update_id": next(seq), "message": {"message_id": 1, "from": user, "chat": chat, "text": text}})
+    telegram.process(
+        {
+            "update_id": next(seq),
+            "message": {"message_id": 1, "from": user, "chat": chat, "text": text},
+        }
+    )
 
 
 def tap(data):
@@ -44,13 +64,45 @@ def tap(data):
     telegram.process(
         {
             "update_id": next(seq),
-            "callback_query": {"id": "cb", "from": user, "data": data, "message": {"message_id": 2, "chat": chat}},
+            "callback_query": {
+                "id": "cb",
+                "from": user,
+                "data": data,
+                "message": {"message_id": 2, "chat": chat},
+            },
         }
     )
 
 
 def first(prefix):
     return next((x for x in last_kb if x and x.startswith(prefix)), None)
+
+
+def inspect(tool=None):
+    with db() as s:
+        sp = s.scalar(select(Space).where(Space.data["tg_user"].astext == str(TG)))
+        count = s.scalar(
+            select(func.count())
+            .select_from(Item)
+            .where(Item.space == sp.id, Item.kind == "ticket")
+        )
+        if tool:
+            job = s.scalar(
+                select(Job)
+                .where(Job.space == sp.id, Job.kind == "ai")
+                .order_by(Job.due.desc())
+            )
+            assert job and job.state == "done", "Agent job did not finish"
+            assert any(
+                t.get("title") == tool and t.get("status") == "success"
+                for t in job.result["trace"]
+            ), tool
+            if tool == "search_knowledge":
+                assert job.result["sources"], "No knowledge citations"
+            checks.append(
+                {"tool": tool, "passed": True, "model": job.result.get("model")}
+            )
+        return count
 
 
 try:
@@ -60,8 +112,25 @@ try:
     tap("d:car")
     tap("d:holiday")
     msg("что ты умеешь?")
+    msg("Сколько я должен?")
+    inspect("get_balance")
     msg("Какие документы нужны, чтобы взять машину в аренду?")
+    inspect("search_knowledge")
+    before = inspect()
     msg("Стучит подвеска справа, нужна диагностика")
+    if not first("agentconfirm:"):
+        assert inspect() == before
+        # This driver has two visible cars; correctly ask which one, then remember the problem.
+        msg("EC-0002")
+    inspect("create_ticket")
+    assert inspect() == before, "Draft created a ticket without confirmation"
+    draft = first("agentconfirm:")
+    assert draft, "No confirmation button"
+    tap(draft)
+    assert inspect() == before + 1
+    tap(draft)
+    assert inspect() == before + 1, "Repeated confirmation duplicated the ticket"
+    checks.append({"confirmation": "explicit and idempotent", "passed": True})
     tap("role:client")
     tap("c:catalog")
     book = first("c:book:")
@@ -92,7 +161,19 @@ try:
     tap("f:economy")
 finally:
     with db() as s:
-        ids = s.scalars(select(Space.id).where(Space.data["tg_user"].astext == str(TG))).all()
+        ids = s.scalars(
+            select(Space.id).where(Space.data["tg_user"].astext == str(TG))
+        ).all()
         if ids:
             s.execute(delete(Space).where(Space.id.in_(ids)))
     print("\nтестовое пространство удалено:", len(ids))
+    Path("reports/bot-under.json").write_text(
+        json.dumps(
+            {
+                "checks": checks,
+                "outgoing_messages": "intercepted; no Telegram delivery",
+            },
+            ensure_ascii=False,
+            indent=2,
+        )
+    )

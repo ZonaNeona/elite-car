@@ -172,9 +172,12 @@ def create_space(s, count=160):
         name = (
             names[i % 10] + f" · {i+1:02}"
             if i < 40
-            else ["ООО «Демо Логистика»", "ООО «Север Проект»", "ООО «Меридиан»", "ООО «Новый маршрут»"][
-                i % 4
-            ]
+            else [
+                "ООО «Демо Логистика»",
+                "ООО «Север Проект»",
+                "ООО «Меридиан»",
+                "ООО «Новый маршрут»",
+            ][i % 4]
             + f" {i}"
         )
         customers.append(
@@ -188,7 +191,11 @@ def create_space(s, count=160):
                     "type": "person" if i < 40 else "company",
                     "phone": f"+7 (000) 000-{i+1:04}",
                     "status": "approved" if i < 42 else "new",
-                    "documents": ["Паспорт", "ВУ", "КИС АРТ", "Справка", "Самозанятость"] if i < 42 else [],
+                    "documents": (
+                        ["Паспорт", "ВУ", "КИС АРТ", "Справка", "Самозанятость"]
+                        if i < 42
+                        else []
+                    ),
                     "age": 28 + i % 20,
                     "experience": 4 + i % 12,
                     "representative": "Учебный представитель" if i >= 40 else "",
@@ -226,10 +233,26 @@ def create_space(s, count=160):
             FLEET["moskvich-3"],
         ],
         # премиум в прокате — штучно, основная масса — комфорт и бизнес
-        "rental": [FLEET["haval-jolion"], FLEET["geely-preface"], FLEET["hongqi-h5"]] * 7
-        + [FLEET["mercedes-e"], FLEET["mercedes-e"], FLEET["bmw-xm"], FLEET["zeekr-9x"]],
-        "commercial": [FLEET["lada-largus"], FLEET["sollers-atlant"], FLEET["sollers-argo"], FLEET["gazelle-next"]],
-        "buyout": [FLEET["moskvich-3"], FLEET["belgee-x50"], FLEET["geely-emgrand"], FLEET["haval-f7"]],
+        "rental": [FLEET["haval-jolion"], FLEET["geely-preface"], FLEET["hongqi-h5"]]
+        * 7
+        + [
+            FLEET["mercedes-e"],
+            FLEET["mercedes-e"],
+            FLEET["bmw-xm"],
+            FLEET["zeekr-9x"],
+        ],
+        "commercial": [
+            FLEET["lada-largus"],
+            FLEET["sollers-atlant"],
+            FLEET["sollers-argo"],
+            FLEET["gazelle-next"],
+        ],
+        "buyout": [
+            FLEET["moskvich-3"],
+            FLEET["belgee-x50"],
+            FLEET["geely-emgrand"],
+            FLEET["haval-f7"],
+        ],
     }
     vehicles = []
     contracts = []
@@ -238,7 +261,11 @@ def create_space(s, count=160):
         kind = (
             "taxi"
             if i % 160 < 60
-            else "rental" if i % 160 < 110 else "commercial" if i % 160 < 130 else "buyout"
+            else (
+                "rental"
+                if i % 160 < 110
+                else "commercial" if i % 160 < 130 else "buyout"
+            )
         )
         car = models[kind][i % len(models[kind])]
         model = car["model"]
@@ -274,7 +301,9 @@ def create_space(s, count=160):
         )
         vehicles.append(v)
         start = today - timedelta(days=60 + i % 28)
-        end = today + timedelta(days=365 if kind == "buyout" else 30 if kind == "taxi" else 4 + i % 10)
+        end = today + timedelta(
+            days=365 if kind == "buyout" else 30 if kind == "taxi" else 4 + i % 10
+        )
         if i % 5 == 0:
             end = today - timedelta(days=7)
         c = add(
@@ -284,7 +313,9 @@ def create_space(s, count=160):
             f"D-{1001+i}",
             {
                 "vehicle": v.id,
-                "client": customers[i % 40 if kind in ("taxi", "buyout") else 40 + i % 8].id,
+                "client": customers[
+                    i % 40 if kind in ("taxi", "buyout") else 40 + i % 8
+                ].id,
                 "direction": kind,
                 "status": "active" if i % 5 != 0 else "completed",
                 "start": str(start),
@@ -298,7 +329,9 @@ def create_space(s, count=160):
                 "free_first": True,
                 "holidays": [],
                 "deposit": str(
-                    (100000 if car["class"] == "Премиум" else 20000) if kind in ("rental", "commercial") else 0
+                    (100000 if car["class"] == "Премиум" else 20000)
+                    if kind in ("rental", "commercial")
+                    else 0
                 ),
                 "km_limit": 250,
                 "extra_km": "30",
@@ -348,7 +381,11 @@ def create_space(s, count=160):
                         amount=amount,
                         date=str(d),
                         key=f"charge:{c.id}:{d}",
-                        data={"reason": "Аренда по договору", "source": "demo", "direction": kind},
+                        data={
+                            "reason": "Аренда по договору",
+                            "source": "demo",
+                            "direction": kind,
+                        },
                     )
                 )
                 paid = amount if day < 86 or i % 7 != 0 else Decimal(0)
@@ -362,7 +399,11 @@ def create_space(s, count=160):
                             amount=paid,
                             date=str(d),
                             key=f"seedpay:{c.id}:{d}",
-                            data={"reason": "Оплата аренды", "source": "demo", "direction": kind},
+                            data={
+                                "reason": "Оплата аренды",
+                                "source": "demo",
+                                "direction": kind,
+                            },
                         )
                     )
         # Расходы по автомобилю за 90 дней: ежемесячные платежи + ТО + случайные ремонты.
@@ -372,12 +413,26 @@ def create_space(s, count=160):
             costs = [
                 ("lease", "Лизинговый платёж", car["lease"]),
                 ("insurance", "ОСАГО и КАСКО", round(car["lease"] * 0.17 / 100) * 100),
-                ("maintenance", "ТО и расходники", (9000 if premium else 3500) + i % 5 * 400),
-                ("wash", "Мойка и химчистка", 4500 if premium else 1800 if kind == "taxi" else 2400),
+                (
+                    "maintenance",
+                    "ТО и расходники",
+                    (9000 if premium else 3500) + i % 5 * 400,
+                ),
+                (
+                    "wash",
+                    "Мойка и химчистка",
+                    4500 if premium else 1800 if kind == "taxi" else 2400,
+                ),
             ]
             if rng.random() < 0.28:
                 title, low, high = rng.choice(REPAIRS)
-                costs.append(("repair", title, rng.randrange(low, high, 500) * (3 if premium else 1)))
+                costs.append(
+                    (
+                        "repair",
+                        title,
+                        rng.randrange(low, high, 500) * (3 if premium else 1),
+                    )
+                )
             for code, reason, amount in costs:
                 entry_batch.append(
                     dict(
@@ -388,7 +443,12 @@ def create_space(s, count=160):
                         amount=Decimal(amount),
                         date=str(d),
                         key=f"{code}:{v.id}:{month}",
-                        data={"reason": reason, "payer": "company", "direction": kind, "category": code},
+                        data={
+                            "reason": reason,
+                            "payer": "company",
+                            "direction": kind,
+                            "category": code,
+                        },
                     )
                 )
         if kind in ("rental", "commercial") and c.data["status"] == "active":
@@ -415,6 +475,11 @@ def create_space(s, count=160):
         if idx >= len(vehicles):
             continue
         v = vehicles[idx]
+        if j % 4 == 3:
+            v.data = {
+                **v.data,
+                "down_since": (now() - timedelta(days=9 + j)).isoformat(),
+            }
         add(
             s,
             space.id,
@@ -437,6 +502,9 @@ def create_space(s, count=160):
                 "payer": "owner" if v.data["investor"] else "company",
                 "due": (now() + timedelta(minutes=15 if j == 0 else 120)).isoformat(),
                 "opened": now().isoformat(),
+                "repair_started": (
+                    (now() - timedelta(days=9 + j)).isoformat() if j % 4 == 3 else None
+                ),
                 "photos": [],
             },
         )
@@ -461,7 +529,9 @@ def create_space(s, count=160):
                 "schedule": "7/0",
             },
         )
-    for i, title in enumerate(["Ремонт: кто оплачивает?", "Как начисляется аренда?", "Документы водителя"]):
+    for i, title in enumerate(
+        ["Ремонт: кто оплачивает?", "Как начисляется аренда?", "Документы водителя"]
+    ):
         add(
             s,
             space.id,

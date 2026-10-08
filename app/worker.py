@@ -15,7 +15,9 @@ def notify(job):
         if job.data.get("via") == "telegram":
             return {"telegram": "answered_in_chat"}
         if job.data.get("target"):
-            item = s.scalar(select(Item).where(Item.space == sp.id, Item.id == job.data["target"]))
+            item = s.scalar(
+                select(Item).where(Item.space == sp.id, Item.id == job.data["target"])
+            )
             if not item or not cansee(s, sp, item):
                 return {"telegram": "out_of_scope"}
         chat = sp.data["tg_chat"]
@@ -31,43 +33,66 @@ def maintenance():
             s.add(System(key="worker", data={"heartbeat": now().isoformat()}))
         else:
             h.data = {"heartbeat": now().isoformat()}
-        s.query(Booking).filter(Booking.state == "hold", Booking.expires < now()).update({"state": "expired"})
-        s.execute(delete(AccessToken).where(AccessToken.created < now() - timedelta(hours=24)))
-        expired = s.scalars(select(Space).where(Space.touched < now() - timedelta(hours=24))).all()
+        s.query(Booking).filter(
+            Booking.state == "hold", Booking.expires < now()
+        ).update({"state": "expired"})
+        s.execute(
+            delete(AccessToken).where(AccessToken.created < now() - timedelta(hours=24))
+        )
+        expired = s.scalars(
+            select(Space).where(Space.touched < now() - timedelta(hours=24))
+        ).all()
         for sp in expired:
             folder = (FILES / sp.id).resolve()
             if folder.parent == FILES.resolve() and folder.exists():
                 shutil.rmtree(folder)
             s.delete(sp)
     with db() as s:
-        ids = s.scalars(select(Space.id).where(Space.touched >= now() - timedelta(hours=24))).all()
+        ids = s.scalars(
+            select(Space.id).where(Space.touched >= now() - timedelta(hours=24))
+        ).all()
     for sid in ids:
         with db() as s:
-            sp = s.scalar(select(Space).where(Space.id == sid).with_for_update(skip_locked=True))
+            sp = s.scalar(
+                select(Space).where(Space.id == sid).with_for_update(skip_locked=True)
+            )
             if not sp:
                 continue
-            if sp.data.get("last_billed") != str(today()) and str(today())[:7] not in sp.data.get(
-                "closed_months", []
-            ):
+            if sp.data.get("last_billed") != str(today()) and str(today())[
+                :7
+            ] not in sp.data.get("closed_months", []):
                 for c in s.scalars(
                     select(Item).where(
-                        Item.space == sid, Item.kind == "contract", Item.data["status"].astext == "active"
+                        Item.space == sid,
+                        Item.kind == "contract",
+                        Item.data["status"].astext == "active",
                     )
                 ):
                     bill(s, sp, c)
                 sp.data = {**sp.data, "last_billed": str(today())}
             for ticket in s.scalars(
                 select(Item).where(
-                    Item.space == sid, Item.kind == "ticket", Item.data["status"].astext == "new"
+                    Item.space == sid,
+                    Item.kind == "ticket",
+                    Item.data["status"].astext == "new",
                 )
             ):
                 if (
                     not ticket.data.get("escalated")
                     and not ticket.data.get("answered_at")
-                    and __import__("datetime").datetime.fromisoformat(ticket.data["due"]) < now()
+                    and __import__("datetime").datetime.fromisoformat(
+                        ticket.data["due"]
+                    )
+                    < now()
                 ):
                     update(ticket, escalated=True)
-                    audit(s, sp, "Просрочена реакция: " + ticket.data["title"], ticket.id, escalation=True)
+                    audit(
+                        s,
+                        sp,
+                        "Просрочена реакция: " + ticket.data["title"],
+                        ticket.id,
+                        escalation=True,
+                    )
 
 
 def main():
@@ -98,7 +123,7 @@ def main():
                         continue
                     j.state = "running"
                     j.attempts += 1
-                    j.lease = now() + timedelta(minutes=3)
+                    j.lease = now() + timedelta(minutes=6)
             if not j:
                 time.sleep(1)
                 continue
@@ -111,6 +136,10 @@ def main():
                     from .telegram import process
 
                     result = process(j.data)
+                elif j.kind in ("integration", "integration_trace"):
+                    from .integrations import execute
+
+                    result = execute(j)
                 elif j.kind == "notify":
                     result = notify(j)
                 elif j.kind == "cleanup_files":
@@ -118,7 +147,12 @@ def main():
                     folder = (FILES / sid).resolve()
                     with db() as s:
                         exists = s.get(Space, sid)
-                    if not exists and len(sid) == 32 and folder.parent == FILES.resolve() and folder.is_dir():
+                    if (
+                        not exists
+                        and len(sid) == 32
+                        and folder.parent == FILES.resolve()
+                        and folder.is_dir()
+                    ):
                         shutil.rmtree(folder)
                     result = {"cleaned": not exists}
                 else:
@@ -140,7 +174,11 @@ def main():
                                 else "Внешний сервис отклонил запрос. Проверьте соединение и лимиты."
                             )
                         }
-                        current.state = "failed" if j.kind == "ai" or current.attempts >= 3 else "pending"
+                        current.state = (
+                            "failed"
+                            if j.kind == "ai" or current.attempts >= 3
+                            else "pending"
+                        )
                         current.due = now() + timedelta(seconds=10 * current.attempts)
         except Exception as e:
             print("worker error", type(e).__name__, flush=True)

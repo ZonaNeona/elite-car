@@ -3,7 +3,7 @@ test("desktop: ремонт, выдача, импорт, роли и докум�
   const errors: string[] = [];
   page.on("pageerror", (e) => errors.push(e.message));
   await page.goto("/");
-  await page.getByRole("button", { name: "Открыть личное демо" }).click();
+  await page.getByRole("button", { name: "Открыть как собственник" }).click();
   await expect(page.getByRole("heading", { name: "Обзор бизнеса." })).toBeVisible({ timeout: 30000 });
   const api = context.request;
   const boot = await (await api.get("/api/v1/bootstrap")).json();
@@ -79,7 +79,7 @@ test("desktop: ремонт, выдача, импорт, роли и докум�
 test("mobile: личный кабинет и создание обращения", async ({ page, context }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/");
-  await page.getByRole("button", { name: "Открыть личное демо" }).click();
+  await page.getByRole("button", { name: "Открыть как собственник" }).click();
   await expect(page.getByLabel("Демонстрационная роль")).toBeVisible({ timeout: 30000 });
   await page.getByLabel("Демонстрационная роль").selectOption("driver");
   await expect(page.getByRole("heading", { name: "Всё важное — под рукой." })).toBeVisible();

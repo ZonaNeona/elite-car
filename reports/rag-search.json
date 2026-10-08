@@ -1,0 +1,342 @@
+{
+  "catalog": {
+    "documents": [
+      {
+        "id": "accounting",
+        "title": "Баланс, задолженность и экономика автомобиля",
+        "url": "",
+        "version": "2026-10-08",
+        "kind": "demo",
+        "chunks": 2
+      },
+      {
+        "id": "issue-return",
+        "title": "Выдача и возврат автомобиля",
+        "url": "",
+        "version": "2026-10-08",
+        "kind": "demo",
+        "chunks": 2
+      },
+      {
+        "id": "buyout",
+        "title": "Выкуп, каникулы и досрочное закрытие",
+        "url": "",
+        "version": "2026-10-08",
+        "kind": "demo",
+        "chunks": 2
+      },
+      {
+        "id": "driver-documents",
+        "title": "Документы водителя и проверка кандидата",
+        "url": "",
+        "version": "2026-10-08",
+        "kind": "demo",
+        "chunks": 2
+      },
+      {
+        "id": "accident",
+        "title": "ДТП и аварийное обращение",
+        "url": "",
+        "version": "2026-10-08",
+        "kind": "demo",
+        "chunks": 2
+      },
+      {
+        "id": "deposit",
+        "title": "Залог и удержания в прокате",
+        "url": "",
+        "version": "2026-10-08",
+        "kind": "demo",
+        "chunks": 2
+      },
+      {
+        "id": "owners",
+        "title": "Отчёт и выплата владельцу автомобиля",
+        "url": "",
+        "version": "2026-10-08",
+        "kind": "demo",
+        "chunks": 2
+      },
+      {
+        "id": "public-8",
+        "title": "Регламент расчётов · учебный",
+        "url": "",
+        "version": "2026-10-07",
+        "kind": "demo",
+        "chunks": 1
+      },
+      {
+        "id": "public-7",
+        "title": "Регламент ремонта · учебный",
+        "url": "",
+        "version": "2026-10-07",
+        "kind": "demo",
+        "chunks": 1
+      },
+      {
+        "id": "service",
+        "title": "ТО, ремонт и подменный автомобиль",
+        "url": "",
+        "version": "2026-10-08",
+        "kind": "demo",
+        "chunks": 2
+      },
+      {
+        "id": "privacy",
+        "title": "Учебная памятка по персональным данным и доступу",
+        "url": "",
+        "version": "2026-10-08",
+        "kind": "demo",
+        "chunks": 2
+      },
+      {
+        "id": "contract-template",
+        "title": "Учебный шаблон договора и границы проекта",
+        "url": "",
+        "version": "2026-10-08",
+        "kind": "demo",
+        "chunks": 2
+      },
+      {
+        "id": "fines",
+        "title": "Штрафы и сверка внешних источников",
+        "url": "",
+        "version": "2026-10-08",
+        "kind": "demo",
+        "chunks": 2
+      },
+      {
+        "id": "public-5",
+        "title": "Автомобили владельцев",
+        "url": "https://elitecar.rent/services/sdat-avto-v-arendu/",
+        "version": "2026-10-07",
+        "kind": "public",
+        "chunks": 1
+      },
+      {
+        "id": "public-3",
+        "title": "Выкуп",
+        "url": "https://car-city.pro/vykup",
+        "version": "2026-10-07",
+        "kind": "public",
+        "chunks": 1
+      },
+      {
+        "id": "public-2",
+        "title": "Оформление водителя",
+        "url": "https://car-city.pro/usloviya",
+        "version": "2026-10-07",
+        "kind": "public",
+        "chunks": 1
+      },
+      {
+        "id": "public-4",
+        "title": "Прокат EliteCar",
+        "url": "https://elitecar.rent/conditions-page/",
+        "version": "2026-10-07",
+        "kind": "public",
+        "chunks": 1
+      },
+      {
+        "id": "public-6",
+        "title": "Реферальная программа",
+        "url": "https://car-city.pro/",
+        "version": "2026-10-07",
+        "kind": "public",
+        "chunks": 1
+      },
+      {
+        "id": "public-0",
+        "title": "Связь брендов с работодателем",
+        "url": "https://hh.ru/employer/2669181",
+        "version": "2026-10-07",
+        "kind": "public",
+        "chunks": 1
+      },
+      {
+        "id": "public-1",
+        "title": "Тарифы Car City",
+        "url": "https://car-city.pro/klassyi-avtomobilej/komfort/moskvich-3",
+        "version": "2026-10-07",
+        "kind": "public",
+        "chunks": 1
+      }
+    ],
+    "chunks": 31,
+    "vectors": 31,
+    "model": "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2",
+    "dimensions": 384,
+    "threshold": 0.38
+  },
+  "results": [
+    {
+      "query": "Какие документы нужны водителю?",
+      "hits": [
+        {
+          "id": "driver-documents:0",
+          "title": "Документы водителя и проверка кандидата",
+          "cosine": 0.6456605555132329,
+          "rrf": 0.01639344262295082
+        },
+        {
+          "id": "public-2:0",
+          "title": "Оформление водителя",
+          "cosine": 0.6267655516752956,
+          "rrf": 0.016129032258064516
+        },
+        {
+          "id": "issue-return:0",
+          "title": "Выдача и возврат автомобиля",
+          "cosine": 0.5123940601087685,
+          "rrf": 0.015873015873015872
+        }
+      ],
+      "accepted": 5
+    },
+    {
+      "query": "Что делать при ДТП?",
+      "hits": [
+        {
+          "id": "accident:0",
+          "title": "ДТП и аварийное обращение",
+          "cosine": 0.6007509934143462,
+          "rrf": 0.01639344262295082
+        },
+        {
+          "id": "issue-return:0",
+          "title": "Выдача и возврат автомобиля",
+          "cosine": 0.3456201003684589,
+          "rrf": 0.016129032258064516
+        },
+        {
+          "id": "public-2:0",
+          "title": "Оформление водителя",
+          "cosine": 0.3355142655427499,
+          "rrf": 0.015873015873015872
+        }
+      ],
+      "accepted": 1
+    },
+    {
+      "query": "Как вернуть залог?",
+      "hits": [
+        {
+          "id": "deposit:0",
+          "title": "Залог и удержания в прокате",
+          "cosine": 0.4251074650710662,
+          "rrf": 0.03278688524590164
+        },
+        {
+          "id": "issue-return:0",
+          "title": "Выдача и возврат автомобиля",
+          "cosine": 0.37629206710111196,
+          "rrf": 0.016129032258064516
+        },
+        {
+          "id": "public-3:0",
+          "title": "Выкуп",
+          "cosine": 0.33144308147156165,
+          "rrf": 0.015873015873015872
+        }
+      ],
+      "accepted": 1
+    },
+    {
+      "query": "Сколько будет стоить досрочный выкуп?",
+      "hits": [
+        {
+          "id": "public-6:0",
+          "title": "Реферальная программа",
+          "cosine": 0.5668840102503292,
+          "rrf": 0.01639344262295082
+        },
+        {
+          "id": "public-1:0",
+          "title": "Тарифы Car City",
+          "cosine": 0.5521129890471825,
+          "rrf": 0.016129032258064516
+        },
+        {
+          "id": "public-3:0",
+          "title": "Выкуп",
+          "cosine": 0.5231801422816731,
+          "rrf": 0.015873015873015872
+        }
+      ],
+      "accepted": 5
+    },
+    {
+      "query": "Как приготовить борщ?",
+      "hits": [
+        {
+          "id": "public-7:0",
+          "title": "Регламент ремонта · учебный",
+          "cosine": 0.20610446264384485,
+          "rrf": 0.01639344262295082
+        },
+        {
+          "id": "service:0",
+          "title": "ТО, ремонт и подменный автомобиль",
+          "cosine": 0.1882291369914446,
+          "rrf": 0.016129032258064516
+        },
+        {
+          "id": "issue-return:0",
+          "title": "Выдача и возврат автомобиля",
+          "cosine": 0.15132330698659002,
+          "rrf": 0.015873015873015872
+        }
+      ],
+      "accepted": 0
+    },
+    {
+      "query": "Какова масса Юпитера?",
+      "hits": [
+        {
+          "id": "owners:0",
+          "title": "Отчёт и выплата владельцу автомобиля",
+          "cosine": 0.189230652549778,
+          "rrf": 0.01639344262295082
+        },
+        {
+          "id": "public-1:0",
+          "title": "Тарифы Car City",
+          "cosine": 0.14440385816708912,
+          "rrf": 0.016129032258064516
+        },
+        {
+          "id": "public-4:0",
+          "title": "Прокат EliteCar",
+          "cosine": 0.08573463814812388,
+          "rrf": 0.015873015873015872
+        }
+      ],
+      "accepted": 0
+    },
+    {
+      "query": "Сколько я должен?",
+      "hits": [
+        {
+          "id": "public-6:0",
+          "title": "Реферальная программа",
+          "cosine": 0.4326809094512645,
+          "rrf": 0.01639344262295082
+        },
+        {
+          "id": "buyout:0",
+          "title": "Выкуп, каникулы и досрочное закрытие",
+          "cosine": 0.4153269331071594,
+          "rrf": 0.016129032258064516
+        },
+        {
+          "id": "public-1:0",
+          "title": "Тарифы Car City",
+          "cosine": 0.3888160752941551,
+          "rrf": 0.015873015873015872
+        }
+      ],
+      "accepted": 3
+    }
+  ],
+  "rss_mb": 60.25
+}

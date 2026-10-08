@@ -1,0 +1,215 @@
+{
+  "checks": [
+    {
+      "source": "1c",
+      "status": "done",
+      "execution": "1159",
+      "rows": 160,
+      "diffs": 3,
+      "nodes": [
+        {
+          "name": "Запуск из кабинета",
+          "status": "success",
+          "ms": 0
+        },
+        {
+          "name": "Контекст запуска",
+          "status": "success",
+          "ms": 10
+        },
+        {
+          "name": "Загрузить источник",
+          "status": "success",
+          "ms": 93
+        },
+        {
+          "name": "Нормализовать данные",
+          "status": "success",
+          "ms": 17
+        },
+        {
+          "name": "Подписанный пакет → учёт",
+          "status": "success",
+          "ms": 508
+        },
+        {
+          "name": "Готово",
+          "status": "success",
+          "ms": 5
+        }
+      ],
+      "records_total": 160,
+      "error": null,
+      "passed": true
+    },
+    {
+      "source": "yandex-pro",
+      "status": "done",
+      "execution": "1160",
+      "rows": 60,
+      "diffs": 1,
+      "nodes": [
+        {
+          "name": "Запуск из кабинета",
+          "status": "success",
+          "ms": 1
+        },
+        {
+          "name": "Контекст запуска",
+          "status": "success",
+          "ms": 6
+        },
+        {
+          "name": "Загрузить источник",
+          "status": "success",
+          "ms": 177
+        },
+        {
+          "name": "Нормализовать данные",
+          "status": "success",
+          "ms": 52
+        },
+        {
+          "name": "Подписанный пакет → учёт",
+          "status": "success",
+          "ms": 247
+        },
+        {
+          "name": "Готово",
+          "status": "success",
+          "ms": 7
+        }
+      ],
+      "records_total": 220,
+      "error": null,
+      "passed": true
+    },
+    {
+      "source": "fines",
+      "status": "done",
+      "execution": "1161",
+      "rows": 3,
+      "diffs": 3,
+      "nodes": [
+        {
+          "name": "Запуск из кабинета",
+          "status": "success",
+          "ms": 1
+        },
+        {
+          "name": "Контекст запуска",
+          "status": "success",
+          "ms": 5
+        },
+        {
+          "name": "Загрузить источник",
+          "status": "success",
+          "ms": 45
+        },
+        {
+          "name": "Нормализовать данные",
+          "status": "success",
+          "ms": 11
+        },
+        {
+          "name": "Подписанный пакет → учёт",
+          "status": "success",
+          "ms": 57
+        },
+        {
+          "name": "Готово",
+          "status": "success",
+          "ms": 4
+        }
+      ],
+      "records_total": 223,
+      "error": null,
+      "passed": true
+    },
+    {
+      "source": "telematics",
+      "status": "done",
+      "execution": "1162",
+      "rows": 160,
+      "diffs": 2,
+      "nodes": [
+        {
+          "name": "Запуск из кабинета",
+          "status": "success",
+          "ms": 0
+        },
+        {
+          "name": "Контекст запуска",
+          "status": "success",
+          "ms": 7
+        },
+        {
+          "name": "Загрузить источник",
+          "status": "success",
+          "ms": 50
+        },
+        {
+          "name": "Нормализовать данные",
+          "status": "success",
+          "ms": 14
+        },
+        {
+          "name": "Подписанный пакет → учёт",
+          "status": "success",
+          "ms": 379
+        },
+        {
+          "name": "Готово",
+          "status": "success",
+          "ms": 6
+        }
+      ],
+      "records_total": 383,
+      "error": null,
+      "passed": true
+    },
+    {
+      "source": "1c",
+      "status": "done",
+      "execution": "1163",
+      "rows": 160,
+      "diffs": 3,
+      "nodes": [
+        {
+          "name": "Запуск из кабинета",
+          "status": "success",
+          "ms": 0
+        },
+        {
+          "name": "Контекст запуска",
+          "status": "success",
+          "ms": 5
+        },
+        {
+          "name": "Загрузить источник",
+          "status": "success",
+          "ms": 45
+        },
+        {
+          "name": "Нормализовать данные",
+          "status": "success",
+          "ms": 10
+        },
+        {
+          "name": "Подписанный пакет → учёт",
+          "status": "success",
+          "ms": 424
+        },
+        {
+          "name": "Готово",
+          "status": "success",
+          "ms": 5
+        }
+      ],
+      "records_total": 383,
+      "error": null,
+      "passed": true
+    }
+  ],
+  "passed": 5
+}
