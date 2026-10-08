@@ -100,6 +100,14 @@ function App() {
     location.hash === "#under" ? "under" : "today",
   );
   useEffect(() => {
+    const followHash = () => {
+      if (location.hash === "#under") setPage("under");
+      else setPage((current) => current === "under" ? "today" : current);
+    };
+    window.addEventListener("hashchange", followHash);
+    return () => window.removeEventListener("hashchange", followHash);
+  }, []);
+  useEffect(() => {
     history.replaceState(
       null,
       "",

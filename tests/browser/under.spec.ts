@@ -1,4 +1,13 @@
 import { test, expect } from "@playwright/test";
+test("under hood: anchor navigation in an already open app", async ({ page }) => {
+  await page.goto("/");
+  await page.getByRole("button", { name: "Открыть как собственник", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "Обзор бизнеса." })).toBeVisible({ timeout: 30000 });
+  await page.goto("/#under");
+  await expect(page.getByRole("heading", { name: "Под капотом." })).toBeVisible();
+  await page.goto("/");
+  await expect(page.getByRole("heading", { name: "Обзор бизнеса." })).toBeVisible();
+});
 test("under hood: real RAG, role-bound agent, n8n trace, themes and mobile", async ({
   page,
   context,
